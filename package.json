@@ -1,5 +1,5 @@
 {
-  "name": "esbuild-ts-lib-starter",
+  "name": "@coder-ka/model",
   "version": "1.0.0",
   "description": "",
   "main": "./dist/index.cjs",
@@ -28,15 +28,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/coder-ka/esbuild-ts-lib-starter.git"
+    "url": "git+https://github.com/coder-ka/model.git"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/coder-ka/esbuild-ts-lib-starter/issues"
+    "url": "https://github.com/coder-ka/model/issues"
   },
-  "homepage": "https://github.com/coder-ka/esbuild-ts-lib-starter#readme",
+  "homepage": "https://github.com/coder-ka/model#readme",
   "devDependencies": {
     "@types/assert": "^1.5.10",
     "@types/node": "^22.5.0",
