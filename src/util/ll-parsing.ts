@@ -101,7 +101,7 @@ export function createLLParser<TResult, TStack extends Stack = Stack>(
 }
 
 export const parseErrorSym = Symbol("parseError");
-type ParseError = {
+export type ParseError = {
   [parseErrorSym]: true;
   message: string;
   token: string;
