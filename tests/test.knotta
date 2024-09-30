@@ -1,0 +1,31 @@
+import "knotta/primitive.knotta"
+
+type User {
+    @hogehoge
+    id: char
+    password: string @hidden
+    passwordSalt: string @hidden
+    todos: Todo[]
+    profile: Profile[1]
+}
+
+type Profile {
+    id: char
+    firstName: string
+    lastName: string
+}
+
+type Login {
+    id: char
+    expiredAt: datetime
+    userId: string
+    user: User
+}
+
+type Todo {
+    id: char
+    title: string
+    deadline: datetime @nullable
+    authorId: string
+    author: User
+}

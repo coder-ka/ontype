@@ -1,4 +1,12 @@
-import assert from "assert";
-import { add } from "../src";
+import { knottaTest } from "./knotta.test";
+import { llParsingTest } from "./ll-parsing.test";
 
-assert.deepStrictEqual(add(1, 2), 3);
+(async () => {
+  await Promise.all(
+    [knottaTest, llParsingTest].map(async (test) => {
+      console.log(`TESTSTART: ${test.description}`);
+      await test.content();
+      console.log(`TESTEND: ${test.description}`);
+    })
+  );
+})();
