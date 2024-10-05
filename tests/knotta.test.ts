@@ -16,28 +16,18 @@ export const knottaTest = test("knotta test").do(async () => {
         props: [
           {
             name: "id",
-            type: { type: "belongs-to", name: "char" },
+            type: { name: "char" },
             decorators: [],
           },
           {
             name: "password",
-            type: { type: "belongs-to", name: "string" },
+            type: { name: "string" },
             decorators: [{ name: "hidden", args: [] }],
           },
           {
             name: "passwordSalt",
-            type: { type: "belongs-to", name: "string" },
+            type: { name: "string" },
             decorators: [{ name: "hidden", args: [] }],
-          },
-          {
-            name: "todos",
-            type: { type: "has", name: "Todo", min: undefined, max: undefined },
-            decorators: [],
-          },
-          {
-            name: "profile",
-            type: { type: "has", name: "Profile", min: undefined, max: 1 },
-            decorators: [],
           },
         ],
         decorators: [{ name: "hogehoge", args: [] }],
@@ -47,17 +37,17 @@ export const knottaTest = test("knotta test").do(async () => {
         props: [
           {
             name: "id",
-            type: { type: "belongs-to", name: "char" },
+            type: { name: "char" },
             decorators: [],
           },
           {
             name: "firstName",
-            type: { type: "belongs-to", name: "string" },
+            type: { name: "string" },
             decorators: [],
           },
           {
             name: "lastName",
-            type: { type: "belongs-to", name: "string" },
+            type: { name: "string" },
             decorators: [],
           },
         ],
@@ -68,22 +58,17 @@ export const knottaTest = test("knotta test").do(async () => {
         props: [
           {
             name: "id",
-            type: { type: "belongs-to", name: "char" },
+            type: { name: "char" },
             decorators: [],
           },
           {
             name: "expiredAt",
-            type: { type: "belongs-to", name: "datetime" },
+            type: { name: "datetime" },
             decorators: [],
           },
           {
             name: "userId",
-            type: { type: "belongs-to", name: "string" },
-            decorators: [],
-          },
-          {
-            name: "user",
-            type: { type: "belongs-to", name: "User" },
+            type: { name: "User", ref: "id" },
             decorators: [],
           },
         ],
@@ -94,27 +79,22 @@ export const knottaTest = test("knotta test").do(async () => {
         props: [
           {
             name: "id",
-            type: { type: "belongs-to", name: "char" },
+            type: { name: "char" },
             decorators: [],
           },
           {
             name: "title",
-            type: { type: "belongs-to", name: "string" },
+            type: { name: "string" },
             decorators: [],
           },
           {
             name: "deadline",
-            type: { type: "belongs-to", name: "datetime" },
+            type: { name: "datetime" },
             decorators: [{ name: "nullable", args: [] }],
           },
           {
             name: "authorId",
-            type: { type: "belongs-to", name: "string" },
-            decorators: [],
-          },
-          {
-            name: "author",
-            type: { type: "belongs-to", name: "User" },
+            type: { name: "User", ref: "id" },
             decorators: [],
           },
         ],

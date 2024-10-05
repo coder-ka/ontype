@@ -5,8 +5,6 @@ type User {
     id: char
     password: string @hidden
     passwordSalt: string @hidden
-    todos: Todo[]
-    profile: Profile[1]
 }
 
 type Profile {
@@ -18,14 +16,12 @@ type Profile {
 type Login {
     id: char
     expiredAt: datetime
-    userId: string
-    user: User
+    userId: User[id]
 }
 
 type Todo {
     id: char
     title: string
     deadline: datetime @nullable
-    authorId: string
-    author: User
+    authorId: User[id]
 }

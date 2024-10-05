@@ -21,16 +21,8 @@ export type Prop = {
 };
 export type PropType = {
   name: string;
-} & (
-  | {
-      type: "belongs-to";
-    }
-  | {
-      type: "has";
-      min: number | undefined;
-      max: number | undefined;
-    }
-);
+  ref?: string;
+};
 export type AST = {
   baseModels: BaseModel[];
   types: Type[];
@@ -47,16 +39,15 @@ const PROP_NAME = Symbol("PROP_NAME");
 const PROP_NAME_END = Symbol("PROP_NAME_END");
 const PROP_TYPE = Symbol("PROP_TYPE");
 const PROP_TYPE_NAME_END = Symbol("PROP_TYPE_NAME_END");
-const PROP_TYPE_HAS_MAX_OR_MIN = Symbol("PROP_TYPE_HAS_MAX_OR_MIN");
-const PROP_TYPE_HAS_COMMA = Symbol("PROP_TYPE_HAS_COMMA");
-const PROP_TYPE_HAS_MAX = Symbol("PROP_TYPE_HAS_MAX");
-const PROP_TYPE_HAS_END = Symbol("PROP_TYPE_HAS_END");
+const PROP_REF = Symbol("PROP_REF");
+const PROP_REF_END = Symbol("PROP_REF_END");
 const PROP_DECORATOR = Symbol("PROP_DECORATOR");
 const $ = Symbol("$");
 
 const separatorRegex = /^[\s\t\[\],:{}]$/;
 const whitespaceRegex = /^[\s\t]$/;
 const blankRegex = /^[ \t]$/;
+const propNameRegex = /^\w+$/;
 
 const knottaParser = createLLParser<{
   ast: AST;
@@ -218,7 +209,7 @@ const knottaParser = createLLParser<{
         return [token, PROP_NAME];
       }
 
-      if (/^\w+$/.test(token)) {
+      if (propNameRegex.test(token)) {
         state.ast.types[state.ast.types.length - 1].props.push({
           name: token,
           type: undefined as unknown as PropType,
@@ -264,7 +255,7 @@ const knottaParser = createLLParser<{
       if (/^\w+$/.test(token)) {
         state.ast.types[state.ast.types.length - 1].props[
           state.ast.types[state.ast.types.length - 1].props.length - 1
-        ].type = { type: "belongs-to", name: token };
+        ].type = { name: token };
         return [token, PROP_TYPE_NAME_END];
       }
 
@@ -278,93 +269,51 @@ const knottaParser = createLLParser<{
         PROP_TYPE,
       ];
     },
-    [PROP_TYPE_NAME_END]([token], _index, state) {
+    [PROP_TYPE_NAME_END]([token], _index) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_TYPE_NAME_END];
       }
 
       if (token === "[") {
-        Object.assign(
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].type,
-          { type: "has", min: undefined, max: undefined }
-        );
-
-        return [token, PROP_TYPE_HAS_MAX_OR_MIN];
+        return [token, PROP_REF];
       }
 
       return [PROP_DECORATOR];
     },
-    [PROP_TYPE_HAS_MAX_OR_MIN]([token], _index, state) {
+    [PROP_REF]([token], index, state) {
       if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_HAS_MAX_OR_MIN];
+        return [token, PROP_REF];
       }
 
-      if (/^\d+$/.test(token)) {
-        Object.assign(
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].type,
-          {
-            max: parseInt(token),
-          }
-        );
-        return [token, PROP_TYPE_HAS_COMMA];
-      }
-
-      return [PROP_TYPE_HAS_COMMA];
-    },
-    [PROP_TYPE_HAS_COMMA]([token], _index, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_HAS_COMMA];
-      }
-
-      if (token === ",") {
-        const propType =
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].type;
-        Object.assign(propType, {
-          min: propType.type === "has" ? propType.max : (undefined as never),
-          max: undefined,
-        });
-        return [token, PROP_TYPE_HAS_MAX];
-      }
-
-      return [PROP_TYPE_HAS_MAX];
-    },
-    [PROP_TYPE_HAS_MAX]([token], _index, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_HAS_MAX];
-      }
-
-      if (/^\d+$/.test(token)) {
-        Object.assign(
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].type,
-          {
-            max: parseInt(token),
-          }
-        );
-        return [token, PROP_TYPE_HAS_END];
-      }
-
-      return [PROP_TYPE_HAS_END];
-    },
-    [PROP_TYPE_HAS_END]([token], index) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_HAS_END];
-      }
-
-      if (token === "]") {
-        return [token, PROP_DECORATOR];
+      if (propNameRegex.test(token)) {
+        state.ast.types[state.ast.types.length - 1].props[
+          state.ast.types[state.ast.types.length - 1].props.length - 1
+        ].type.ref = token;
+        return [token, PROP_REF_END];
       }
 
       return [
         parseError({
-          message: `Unexpected token: '${token}' in property type.`,
+          message: `Invalid property reference: '${token}'.`,
+          token,
+          index: index - token.length,
+        }),
+        token,
+        PROP_DECORATOR,
+      ];
+    },
+    [PROP_REF_END]([token], index) {
+      if (whitespaceRegex.test(token)) {
+        return [token, PROP_REF_END];
+      }
+
+      if (token === "]") {
+        return [token, TYPE_CONTENT];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected end of property reference: '${token}'.`,
           token,
           index: index - token.length,
         }),
