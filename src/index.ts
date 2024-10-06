@@ -47,8 +47,9 @@ const $ = Symbol("$");
 const separatorRegex = /^[\s\t\[\],:{}]$/;
 const whitespaceRegex = /^[\s\t]$/;
 const blankRegex = /^[ \t]$/;
+const typeNameRegex = /^\w+$/;
 const propNameRegex = /^\w+$/;
-
+const propTypeNameRegex = /^\w+$/;
 const knottaParser = createLLParser<{
   ast: AST;
 }>(
@@ -120,7 +121,7 @@ const knottaParser = createLLParser<{
         return [token, TYPE_NAME];
       }
 
-      if (/^\w+$/.test(token)) {
+      if (typeNameRegex.test(token)) {
         state.ast.types.push({
           name: token,
           props: [],
@@ -167,7 +168,7 @@ const knottaParser = createLLParser<{
         return [TYPE_DECORATOR];
       }
 
-      if (/^\w+$/.test(token)) {
+      if (propNameRegex.test(token)) {
         return [PROP_NAME];
       }
 
@@ -252,7 +253,7 @@ const knottaParser = createLLParser<{
         return [token, PROP_TYPE];
       }
 
-      if (/^\w+$/.test(token)) {
+      if (propTypeNameRegex.test(token)) {
         state.ast.types[state.ast.types.length - 1].props[
           state.ast.types[state.ast.types.length - 1].props.length - 1
         ].type = { name: token };
@@ -285,7 +286,7 @@ const knottaParser = createLLParser<{
         return [token, PROP_REF];
       }
 
-      if (propNameRegex.test(token)) {
+      if (propTypeNameRegex.test(token)) {
         state.ast.types[state.ast.types.length - 1].props[
           state.ast.types[state.ast.types.length - 1].props.length - 1
         ].type.ref = token;
