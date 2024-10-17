@@ -5,7 +5,15 @@ import assert from "assert";
 
 export const knottaTest = test("knotta test").do(async () => {
   const readStream = fs.createReadStream(`${__dirname}/test.knotta`, "utf-8");
-  const { errors, result } = await parse(readStream);
+  const { errors, result } = await parse(readStream, {
+    enableAst: true,
+    ast: {
+      baseModels: [],
+      types: [],
+    },
+    enableSemanticTokens: false,
+    semanticTokens: [],
+  });
 
   assert.deepStrictEqual(errors, []);
   assert.deepStrictEqual(result.ast, {

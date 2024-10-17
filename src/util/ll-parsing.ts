@@ -1,13 +1,20 @@
 export type LexedItem = {
   tokens: string[];
   index: number;
+  line: number;
+  inlineIndex: number;
+};
+export type Position = {
+  index: number;
+  line: number;
+  inlineIndex: number;
 };
 export type Lexed = AsyncIterable<LexedItem>;
 export type Stack = (symbol | string | ParseError)[];
 export function createLLParser<TResult, TStack extends Stack = Stack>(
   rules: Record<
     symbol,
-    (token: string[], index: number, result: TResult) => TStack
+    (token: string[], position: Position, result: TResult) => TStack
   >,
   initStack: () => TStack
 ) {
@@ -31,7 +38,7 @@ export function createLLParser<TResult, TStack extends Stack = Stack>(
       const errors: ParseError[] = [];
       let lastIndex = 0;
       try {
-        for await (const { tokens, index } of lexed) {
+        for await (const { tokens, index, line, inlineIndex } of lexed) {
           let tos;
           while ((tos = stack.shift()) && typeof tos === "symbol") {
             if (options.debug) {
@@ -47,7 +54,17 @@ export function createLLParser<TResult, TStack extends Stack = Stack>(
             }
             const rule = rules[tos];
             if (!rule) throw new Error(`No rule for ${tos.toString()}.`);
-            stack.unshift(...rule(tokens, index, result));
+            stack.unshift(
+              ...rule(
+                tokens,
+                {
+                  index,
+                  line,
+                  inlineIndex,
+                },
+                result
+              )
+            );
           }
 
           if (typeof tos === "string") {
@@ -55,6 +72,8 @@ export function createLLParser<TResult, TStack extends Stack = Stack>(
               const error = parseError({
                 message: `Expected '${tos}' but got '${tokens[0]}'.`,
                 index,
+                line,
+                inlineIndex,
                 token: tokens[0],
               });
               if (options.onError === "stop") {
@@ -106,6 +125,8 @@ export type ParseError = {
   message: string;
   token: string;
   index: number;
+  line: number;
+  inlineIndex: number;
 };
 
 export function parseError(

@@ -7,7 +7,7 @@ export const llParsingTest = test("ll-parsing").do(async () => {
   const $ = Symbol("$");
   const llparser = createLLParser<{ value: string }>(
     {
-      [S]: ([token], index, result) => {
+      [S]: ([token], { index }, result) => {
         if (token === "a") {
           result.value = "a" + result.value;
           return ["a", S];
@@ -34,14 +34,20 @@ export const llParsingTest = test("ll-parsing").do(async () => {
       yield {
         tokens: ["a"],
         index: 1,
+        line: 0,
+        inlineIndex: 1,
       };
       yield {
         tokens: ["b"],
         index: 2,
+        line: 0,
+        inlineIndex: 2,
       };
       yield {
         tokens: ["c"],
         index: 3,
+        line: 0,
+        inlineIndex: 3,
       };
     })(),
     { value: "" }

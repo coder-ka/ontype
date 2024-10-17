@@ -28,21 +28,26 @@ export type AST = {
   types: Type[];
 };
 
-const START = Symbol("START");
-const IMPORT_PATH = Symbol("IMPORT_PATH");
-const MODEL = Symbol("MODEL");
-const TYPE_NAME = Symbol("TYPE_NAME");
-const TYPE_CONTENT_START = Symbol("TYPE_CONTENT_START");
-const TYPE_CONTENT = Symbol("TYPE_CONTENT");
-const TYPE_DECORATOR = Symbol("TYPE_DECORATOR");
-const PROP_NAME = Symbol("PROP_NAME");
-const PROP_NAME_END = Symbol("PROP_NAME_END");
-const PROP_TYPE = Symbol("PROP_TYPE");
-const PROP_TYPE_NAME_END = Symbol("PROP_TYPE_NAME_END");
-const PROP_REF = Symbol("PROP_REF");
-const PROP_REF_END = Symbol("PROP_REF_END");
-const PROP_DECORATOR = Symbol("PROP_DECORATOR");
-const $ = Symbol("$");
+export type State = {
+  enableAst: boolean;
+  ast: AST;
+};
+
+export const START = Symbol("START");
+export const IMPORT_PATH = Symbol("IMPORT_PATH");
+export const MODEL = Symbol("MODEL");
+export const TYPE_NAME = Symbol("TYPE_NAME");
+export const TYPE_CONTENT_START = Symbol("TYPE_CONTENT_START");
+export const TYPE_CONTENT = Symbol("TYPE_CONTENT");
+export const TYPE_DECORATOR = Symbol("TYPE_DECORATOR");
+export const PROP_NAME = Symbol("PROP_NAME");
+export const PROP_NAME_END = Symbol("PROP_NAME_END");
+export const PROP_TYPE = Symbol("PROP_TYPE");
+export const PROP_TYPE_NAME_END = Symbol("PROP_TYPE_NAME_END");
+export const PROP_REF = Symbol("PROP_REF");
+export const PROP_REF_END = Symbol("PROP_REF_END");
+export const PROP_DECORATOR = Symbol("PROP_DECORATOR");
+export const $ = Symbol("$");
 
 const separatorRegex = /^[\s\t\[\],:{}]$/;
 const whitespaceRegex = /^[\s\t]$/;
@@ -50,11 +55,9 @@ const blankRegex = /^[ \t]$/;
 const typeNameRegex = /^\w+$/;
 const propNameRegex = /^\w+$/;
 const propTypeNameRegex = /^\w+$/;
-const knottaParser = createLLParser<{
-  ast: AST;
-}>(
+const knottaParser = createLLParser<State>(
   {
-    [START]([token], index, _state) {
+    [START]([token], { index, line, inlineIndex }, _state) {
       if (whitespaceRegex.test(token)) {
         return [token, START];
       }
@@ -72,19 +75,23 @@ const knottaParser = createLLParser<{
           message: `Unexpected token: '${token}'.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         START,
       ];
     },
-    [IMPORT_PATH]([token], index, state) {
+    [IMPORT_PATH]([token], { index, line, inlineIndex }, state) {
       if (blankRegex.test(token)) {
         return [token, IMPORT_PATH];
       }
 
       if (token.startsWith('"') && token.endsWith('"')) {
-        state.ast.baseModels.push({ path: token.slice(1, -1) });
-        return [token, START];
+        if (state.enableAst) {
+          state.ast.baseModels.push({ path: token.slice(1, -1) });
+          return [token, START];
+        }
       }
 
       return [
@@ -92,12 +99,14 @@ const knottaParser = createLLParser<{
           message: `Expected a quoted string after 'import'.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         START,
       ];
     },
-    [MODEL]([token], index, _state) {
+    [MODEL]([token], { index, line, inlineIndex }, _state) {
       if (whitespaceRegex.test(token)) {
         return [token, MODEL];
       }
@@ -111,22 +120,27 @@ const knottaParser = createLLParser<{
           message: `Unexpected token: '${token}'.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         MODEL,
       ];
     },
-    [TYPE_NAME]([token], index, state) {
+    [TYPE_NAME]([token], { index, line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
         return [token, TYPE_NAME];
       }
 
       if (typeNameRegex.test(token)) {
-        state.ast.types.push({
-          name: token,
-          props: [],
-          decorators: [],
-        });
+        if (state.enableAst) {
+          state.ast.types.push({
+            name: token,
+            props: [],
+            decorators: [],
+          });
+        }
+
         return [token, TYPE_CONTENT_START];
       }
 
@@ -135,12 +149,14 @@ const knottaParser = createLLParser<{
           message: `Invalid type name: '${token}'.`,
           token: token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         TYPE_CONTENT_START,
       ];
     },
-    [TYPE_CONTENT_START]([token], index, _state) {
+    [TYPE_CONTENT_START]([token], { index, line, inlineIndex }, _state) {
       if (whitespaceRegex.test(token)) {
         return [token, TYPE_CONTENT_START];
       }
@@ -154,12 +170,14 @@ const knottaParser = createLLParser<{
           message: `Expected '{' after type name.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         START,
       ];
     },
-    [TYPE_CONTENT]([token], index) {
+    [TYPE_CONTENT]([token], { index, line, inlineIndex }) {
       if (whitespaceRegex.test(token)) {
         return [token, TYPE_CONTENT];
       }
@@ -180,18 +198,22 @@ const knottaParser = createLLParser<{
         parseError({
           message: `Unexpected token: '${token}'.`,
           token,
-          index,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         TYPE_CONTENT,
       ];
     },
-    [TYPE_DECORATOR]([token], index, state) {
+    [TYPE_DECORATOR]([token], { index, line, inlineIndex }, state) {
       if (/^@\w+$/.test(token)) {
-        state.ast.types[state.ast.types.length - 1].decorators.push({
-          name: token.slice(1),
-          args: [],
-        });
+        if (state.enableAst) {
+          state.ast.types[state.ast.types.length - 1].decorators.push({
+            name: token.slice(1),
+            args: [],
+          });
+        }
         return [token, TYPE_CONTENT];
       }
 
@@ -200,22 +222,26 @@ const knottaParser = createLLParser<{
           message: `Invalid type decorator name: '${token}'.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         TYPE_CONTENT,
       ];
     },
-    [PROP_NAME]([token], index, state) {
+    [PROP_NAME]([token], { index, line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_NAME];
       }
 
       if (propNameRegex.test(token)) {
-        state.ast.types[state.ast.types.length - 1].props.push({
-          name: token,
-          type: undefined as unknown as PropType,
-          decorators: [],
-        });
+        if (state.enableAst) {
+          state.ast.types[state.ast.types.length - 1].props.push({
+            name: token,
+            type: undefined as unknown as PropType,
+            decorators: [],
+          });
+        }
         return [token, PROP_NAME_END];
       }
 
@@ -224,12 +250,14 @@ const knottaParser = createLLParser<{
           message: `Invalid property name: '${token}'.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         PROP_NAME,
       ];
     },
-    [PROP_NAME_END]([token], index) {
+    [PROP_NAME_END]([token], { index, line, inlineIndex }) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_NAME_END];
       }
@@ -243,20 +271,24 @@ const knottaParser = createLLParser<{
           message: `Unexpected token: '${token}'.`,
           token,
           index,
+          line,
+          inlineIndex,
         }),
         token,
         PROP_NAME_END,
       ];
     },
-    [PROP_TYPE]([token], index, state) {
+    [PROP_TYPE]([token], { index, line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_TYPE];
       }
 
       if (propTypeNameRegex.test(token)) {
-        state.ast.types[state.ast.types.length - 1].props[
-          state.ast.types[state.ast.types.length - 1].props.length - 1
-        ].type = { name: token };
+        if (state.enableAst) {
+          state.ast.types[state.ast.types.length - 1].props[
+            state.ast.types[state.ast.types.length - 1].props.length - 1
+          ].type = { name: token };
+        }
         return [token, PROP_TYPE_NAME_END];
       }
 
@@ -265,12 +297,14 @@ const knottaParser = createLLParser<{
           message: `Invalid property type: '${token}'.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         PROP_TYPE,
       ];
     },
-    [PROP_TYPE_NAME_END]([token], _index) {
+    [PROP_TYPE_NAME_END]([token], _position) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_TYPE_NAME_END];
       }
@@ -281,15 +315,17 @@ const knottaParser = createLLParser<{
 
       return [PROP_DECORATOR];
     },
-    [PROP_REF]([token], index, state) {
+    [PROP_REF]([token], { index, line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_REF];
       }
 
       if (propTypeNameRegex.test(token)) {
-        state.ast.types[state.ast.types.length - 1].props[
-          state.ast.types[state.ast.types.length - 1].props.length - 1
-        ].type.ref = token;
+        if (state.enableAst) {
+          state.ast.types[state.ast.types.length - 1].props[
+            state.ast.types[state.ast.types.length - 1].props.length - 1
+          ].type.ref = token;
+        }
         return [token, PROP_REF_END];
       }
 
@@ -298,12 +334,14 @@ const knottaParser = createLLParser<{
           message: `Invalid property reference: '${token}'.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         PROP_DECORATOR,
       ];
     },
-    [PROP_REF_END]([token], index) {
+    [PROP_REF_END]([token], { index, line, inlineIndex }) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_REF_END];
       }
@@ -317,35 +355,41 @@ const knottaParser = createLLParser<{
           message: `Unexpected end of property reference: '${token}'.`,
           token,
           index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
         PROP_DECORATOR,
       ];
     },
-    [PROP_DECORATOR]([token], _index, state) {
+    [PROP_DECORATOR]([token], _position, state) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_DECORATOR];
       }
 
       if (token.startsWith("@")) {
-        state.ast.types[state.ast.types.length - 1].props[
-          state.ast.types[state.ast.types.length - 1].props.length - 1
-        ].decorators.push({
-          name: token.slice(1),
-          args: [],
-        });
+        if (state.enableAst) {
+          state.ast.types[state.ast.types.length - 1].props[
+            state.ast.types[state.ast.types.length - 1].props.length - 1
+          ].decorators.push({
+            name: token.slice(1),
+            args: [],
+          });
+        }
         return [token, PROP_DECORATOR];
       }
 
       return [TYPE_CONTENT];
     },
-    [$]([token], index, _) {
+    [$]([token], { index, line, inlineIndex }, _) {
       return [
         token,
         parseError({
           message: `Unexpected token: '${token}'.`,
           token,
           index,
+          inlineIndex,
+          line,
         }),
       ];
     },
@@ -353,13 +397,11 @@ const knottaParser = createLLParser<{
   () => [START, $]
 );
 
-export async function parse(stream: ReadStream | ReadableStream) {
-  return knottaParser.parse(lexer(stream), {
-    ast: {
-      baseModels: [],
-      types: [],
-    },
-  });
+export async function parse(
+  stream: ReadStream | ReadableStream,
+  initialState: State
+) {
+  return knottaParser.parse(lexer(stream), initialState);
 }
 
 export async function* lexer(stream: ReadStream | ReadableStream): Lexed {
@@ -367,13 +409,21 @@ export async function* lexer(stream: ReadStream | ReadableStream): Lexed {
   let isQuoting = false;
   let isEscaping = false;
   let index = 0;
+  let line = 0;
+  let inlineIndex = 0;
 
   for await (const buf of stream) {
     const chunk: string = buf.toString("utf-8");
     for (let i = 0, imax = chunk.length; i < imax; i++) {
       index++;
+      inlineIndex++;
+
       const char = chunk[i];
-      if (char === ":")
+
+      if (/\r?\n/.test(char)) {
+        line++;
+        inlineIndex = 0;
+      } else if (char === ":")
         if (isEscaping) {
           token += char;
           isEscaping = false;
@@ -398,11 +448,16 @@ export async function* lexer(stream: ReadStream | ReadableStream): Lexed {
 
       if (separatorRegex.test(char)) {
         if (token !== "") {
-          yield { tokens: [token], index: index - 1 };
+          yield {
+            tokens: [token],
+            index: index - 1,
+            line,
+            inlineIndex: inlineIndex - 1,
+          };
           token = "";
         }
 
-        yield { tokens: [char], index };
+        yield { tokens: [char], index, line, inlineIndex };
         continue;
       } else {
         token += char;
@@ -411,7 +466,7 @@ export async function* lexer(stream: ReadStream | ReadableStream): Lexed {
     }
 
     if (token !== "") {
-      yield { tokens: [token], index };
+      yield { tokens: [token], index, line, inlineIndex };
     }
   }
 }
