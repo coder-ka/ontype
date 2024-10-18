@@ -186,7 +186,6 @@ const knottaParser = createLLParser<State>(
             decorators: [],
           });
         }
-
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
             type: "type-name",
@@ -463,12 +462,14 @@ const knottaParser = createLLParser<State>(
             args: [],
           });
         }
-        state.semanticTokens.push({
-          type: "prop-decorator",
-          length: token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        });
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "prop-decorator",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
         return [token, PROP_DECORATOR];
       }
 
