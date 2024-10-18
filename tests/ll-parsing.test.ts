@@ -7,7 +7,7 @@ export const llParsingTest = test("ll-parsing").do(async () => {
   const $ = Symbol("$");
   const llparser = createLLParser<{ value: string }>(
     {
-      [S]: ([token], { index }, result) => {
+      [S]: ([token], { index, line, inlineIndex }, result) => {
         if (token === "a") {
           result.value = "a" + result.value;
           return ["a", S];
@@ -22,6 +22,8 @@ export const llParsingTest = test("ll-parsing").do(async () => {
               message: `Unexpected token: '${token}'.`,
               token,
               index,
+              line,
+              inlineIndex,
             }),
           ];
         }

@@ -11,6 +11,10 @@ export type Position = {
 };
 export type Lexed = AsyncIterable<LexedItem>;
 export type Stack = (symbol | string | ParseError)[];
+export type ParseOptions = {
+  onError: "stop" | "throw" | "continue";
+  debug?: boolean;
+};
 export function createLLParser<TResult, TStack extends Stack = Stack>(
   rules: Record<
     symbol,
@@ -22,10 +26,7 @@ export function createLLParser<TResult, TStack extends Stack = Stack>(
     async parse(
       lexed: Lexed,
       result: TResult,
-      options: {
-        onError: "stop" | "throw" | "continue";
-        debug?: boolean;
-      } = {
+      options: ParseOptions = {
         onError: "stop",
       }
     ): Promise<{

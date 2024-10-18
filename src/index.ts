@@ -1,6 +1,12 @@
 import { ReadStream } from "fs";
 import { ReadableStream } from "stream/web";
-import { createLLParser, Lexed, parseError } from "./util/ll-parsing";
+import {
+  createLLParser,
+  Lexed,
+  parseError,
+  ParseOptions,
+} from "./util/ll-parsing";
+import { Readable } from "stream";
 
 export type Decorator = {
   name: string;
@@ -31,6 +37,13 @@ export type AST = {
 export type State = {
   enableAst: boolean;
   ast: AST;
+  enableSemanticTokens: boolean;
+  semanticTokens: {
+    type: string;
+    length: number;
+    line: number;
+    inlineIndex: number;
+  }[];
 };
 
 export const START = Symbol("START");
@@ -50,6 +63,7 @@ export const PROP_DECORATOR = Symbol("PROP_DECORATOR");
 export const $ = Symbol("$");
 
 const separatorRegex = /^[\s\t\[\],:{}]$/;
+const newlineRegex = /^\r?\n$/;
 const whitespaceRegex = /^[\s\t]$/;
 const blankRegex = /^[ \t]$/;
 const typeNameRegex = /^\w+$/;
@@ -57,16 +71,32 @@ const propNameRegex = /^\w+$/;
 const propTypeNameRegex = /^\w+$/;
 const knottaParser = createLLParser<State>(
   {
-    [START]([token], { index, line, inlineIndex }, _state) {
+    [START]([token], { index, line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
         return [token, START];
       }
 
       if (token === "import") {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "import",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
         return [token, IMPORT_PATH];
       }
 
       if (token === "type") {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "type",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
         return [token, TYPE_NAME];
       }
 
@@ -90,8 +120,16 @@ const knottaParser = createLLParser<State>(
       if (token.startsWith('"') && token.endsWith('"')) {
         if (state.enableAst) {
           state.ast.baseModels.push({ path: token.slice(1, -1) });
-          return [token, START];
         }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "string",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, START];
       }
 
       return [
@@ -106,12 +144,20 @@ const knottaParser = createLLParser<State>(
         START,
       ];
     },
-    [MODEL]([token], { index, line, inlineIndex }, _state) {
+    [MODEL]([token], { index, line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
         return [token, MODEL];
       }
 
       if (token === "type") {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "type",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
         return [token, TYPE_NAME];
       }
 
@@ -141,6 +187,15 @@ const knottaParser = createLLParser<State>(
           });
         }
 
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "type-name",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+
         return [token, TYPE_CONTENT_START];
       }
 
@@ -156,7 +211,7 @@ const knottaParser = createLLParser<State>(
         TYPE_CONTENT_START,
       ];
     },
-    [TYPE_CONTENT_START]([token], { index, line, inlineIndex }, _state) {
+    [TYPE_CONTENT_START]([token], { index, line, inlineIndex }) {
       if (whitespaceRegex.test(token)) {
         return [token, TYPE_CONTENT_START];
       }
@@ -214,6 +269,14 @@ const knottaParser = createLLParser<State>(
             args: [],
           });
         }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "type-decorator",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
         return [token, TYPE_CONTENT];
       }
 
@@ -240,6 +303,14 @@ const knottaParser = createLLParser<State>(
             name: token,
             type: undefined as unknown as PropType,
             decorators: [],
+          });
+        }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "prop-name",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
           });
         }
         return [token, PROP_NAME_END];
@@ -289,6 +360,14 @@ const knottaParser = createLLParser<State>(
             state.ast.types[state.ast.types.length - 1].props.length - 1
           ].type = { name: token };
         }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "prop-type-name",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
         return [token, PROP_TYPE_NAME_END];
       }
 
@@ -326,6 +405,14 @@ const knottaParser = createLLParser<State>(
             state.ast.types[state.ast.types.length - 1].props.length - 1
           ].type.ref = token;
         }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "prop-ref",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
         return [token, PROP_REF_END];
       }
 
@@ -362,7 +449,7 @@ const knottaParser = createLLParser<State>(
         PROP_DECORATOR,
       ];
     },
-    [PROP_DECORATOR]([token], _position, state) {
+    [PROP_DECORATOR]([token], { line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_DECORATOR];
       }
@@ -376,6 +463,12 @@ const knottaParser = createLLParser<State>(
             args: [],
           });
         }
+        state.semanticTokens.push({
+          type: "prop-decorator",
+          length: token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        });
         return [token, PROP_DECORATOR];
       }
 
@@ -398,13 +491,24 @@ const knottaParser = createLLParser<State>(
 );
 
 export async function parse(
-  stream: ReadStream | ReadableStream,
-  initialState: State
+  stream:
+    | ReadStream
+    | ReadableStream
+    | Readable
+    | AsyncIterable<string | Buffer>,
+  initialState: State,
+  options?: ParseOptions
 ) {
-  return knottaParser.parse(lexer(stream), initialState);
+  return knottaParser.parse(lexer(stream), initialState, options);
 }
 
-export async function* lexer(stream: ReadStream | ReadableStream): Lexed {
+export async function* lexer(
+  stream:
+    | ReadStream
+    | ReadableStream
+    | Readable
+    | AsyncIterable<string | Buffer>
+): Lexed {
   let token = "";
   let isQuoting = false;
   let isEscaping = false;
@@ -420,33 +524,19 @@ export async function* lexer(stream: ReadStream | ReadableStream): Lexed {
 
       const char = chunk[i];
 
-      if (/\r?\n/.test(char)) {
-        line++;
-        inlineIndex = 0;
-      } else if (char === ":")
-        if (isEscaping) {
-          token += char;
-          isEscaping = false;
-          continue;
-        }
-
-      if (char === "\\") {
+      if (isEscaping) {
+        token += char;
+        isEscaping = false;
+      } else if (char === "\\") {
         isEscaping = true;
-        continue;
-      }
-
-      if (isQuoting) {
+      } else if (isQuoting) {
         if (char === '"') {
           isQuoting = false;
           token += '"';
-          continue;
         } else {
           token += char;
-          continue;
         }
-      }
-
-      if (separatorRegex.test(char)) {
+      } else if (separatorRegex.test(char)) {
         if (token !== "") {
           yield {
             tokens: [token],
@@ -458,10 +548,13 @@ export async function* lexer(stream: ReadStream | ReadableStream): Lexed {
         }
 
         yield { tokens: [char], index, line, inlineIndex };
-        continue;
       } else {
         token += char;
-        continue;
+      }
+
+      if (newlineRegex.test(char)) {
+        line++;
+        inlineIndex = 0;
       }
     }
 

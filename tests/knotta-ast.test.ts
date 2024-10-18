@@ -3,7 +3,7 @@ import { test } from "@coder-ka/testing";
 import { parse } from "../src";
 import assert from "assert";
 
-export const knottaTest = test("knotta test").do(async () => {
+export const knottaAstTest = test("knotta ast test").do(async () => {
   const readStream = fs.createReadStream(`${__dirname}/test.knotta`, "utf-8");
   const { errors, result } = await parse(readStream, {
     enableAst: true,
