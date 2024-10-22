@@ -1,8 +1,9 @@
 {
   "name": "knotta",
-  "version": "1.0.1",
-  "description": "",
+  "version": "1.0.4",
+  "description": "knotta is a schema language for domain modeling",
   "main": "./dist/index.cjs",
+  "types": "./types/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",

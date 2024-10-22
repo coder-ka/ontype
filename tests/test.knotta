@@ -22,6 +22,6 @@ type Login {
 type Todo {
     id: char
     title: string
-    deadline: datetime @nullable
+    deadline?: datetime @nullable
     authorId: User[id]
 }

@@ -24,6 +24,7 @@ export type Prop = {
   name: string;
   type: PropType;
   decorators: Decorator[];
+  optional: boolean;
 };
 export type PropType = {
   name: string;
@@ -55,6 +56,7 @@ export const TYPE_CONTENT = Symbol("TYPE_CONTENT");
 export const TYPE_DECORATOR = Symbol("TYPE_DECORATOR");
 export const PROP_NAME = Symbol("PROP_NAME");
 export const PROP_NAME_END = Symbol("PROP_NAME_END");
+export const OPTIONAL_PROP_NAME_END = Symbol("OPTIONAL_PROP_NAME_END");
 export const PROP_TYPE = Symbol("PROP_TYPE");
 export const PROP_TYPE_NAME_END = Symbol("PROP_TYPE_NAME_END");
 export const PROP_REF = Symbol("PROP_REF");
@@ -62,7 +64,7 @@ export const PROP_REF_END = Symbol("PROP_REF_END");
 export const PROP_DECORATOR = Symbol("PROP_DECORATOR");
 export const $ = Symbol("$");
 
-const separatorRegex = /^[\s\t\[\],:{}]$/;
+const separatorRegex = /^[\s\t\[\],:{}\?]$/;
 const newlineRegex = /^\r?\n$/;
 const whitespaceRegex = /^[\s\t]$/;
 const blankRegex = /^[ \t]$/;
@@ -302,6 +304,7 @@ const knottaParser = createLLParser<State>(
             name: token,
             type: undefined as unknown as PropType,
             decorators: [],
+            optional: false,
           });
         }
         if (state.enableSemanticTokens) {
@@ -327,7 +330,45 @@ const knottaParser = createLLParser<State>(
         PROP_NAME,
       ];
     },
-    [PROP_NAME_END]([token], { index, line, inlineIndex }) {
+    [PROP_NAME_END]([token], { index, line, inlineIndex }, state) {
+      if (whitespaceRegex.test(token)) {
+        return [token, PROP_NAME_END];
+      }
+
+      if (token.startsWith("?")) {
+        if (state.enableAst) {
+          state.ast.types[state.ast.types.length - 1].props[
+            state.ast.types[state.ast.types.length - 1].props.length - 1
+          ].optional = true;
+        }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "prop-optional",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, OPTIONAL_PROP_NAME_END];
+      }
+
+      if (token.startsWith(":")) {
+        return [token, PROP_TYPE];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index,
+          line,
+          inlineIndex,
+        }),
+        token,
+        PROP_NAME_END,
+      ];
+    },
+    [OPTIONAL_PROP_NAME_END]([token], { index, line, inlineIndex }) {
       if (whitespaceRegex.test(token)) {
         return [token, PROP_NAME_END];
       }
