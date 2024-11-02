@@ -3,8 +3,8 @@ import { test } from "@coder-ka/testing";
 import { parse } from "../src";
 import assert from "assert";
 
-export const knottaAstTest = test("knotta ast test").do(async () => {
-  const readStream = fs.createReadStream(`${__dirname}/test.knotta`, "utf-8");
+export const ontypeAstTest = test("ontype ast test").do(async () => {
+  const readStream = fs.createReadStream(`${__dirname}/test.ontype`, "utf-8");
   const { errors, result } = await parse(readStream, {
     enableAst: true,
     ast: {
@@ -17,7 +17,7 @@ export const knottaAstTest = test("knotta ast test").do(async () => {
 
   assert.deepStrictEqual(errors, []);
   assert.deepStrictEqual(result.ast, {
-    baseModels: [{ path: "knotta/primitive.knotta" }],
+    baseModels: [{ path: "ontype/primitive.ontype" }],
     types: [
       {
         name: "User",

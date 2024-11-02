@@ -1,7 +1,7 @@
 {
-  "name": "knotta",
+  "name": "ontype",
   "version": "1.0.4",
-  "description": "knotta is a schema language for domain modeling",
+  "description": "ontype is a schema language for domain modeling",
   "main": "./dist/index.cjs",
   "types": "./types/index.d.ts",
   "exports": {
@@ -29,15 +29,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/coder-ka/knotta.git"
+    "url": "git+https://github.com/coder-ka/ontype.git"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/coder-ka/knotta/issues"
+    "url": "https://github.com/coder-ka/ontype/issues"
   },
-  "homepage": "https://github.com/coder-ka/knotta#readme",
+  "homepage": "https://github.com/coder-ka/ontype#readme",
   "devDependencies": {
     "@coder-ka/testing": "^1.0.0",
     "@types/assert": "^1.5.10",

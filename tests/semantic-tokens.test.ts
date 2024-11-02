@@ -3,9 +3,9 @@ import { test } from "@coder-ka/testing";
 import { parse } from "../src";
 import assert from "assert";
 
-export const knottaSemanticTokensTest = test("knotta semantic tokens test").do(
+export const ontypeSemanticTokensTest = test("ontype semantic tokens test").do(
   async () => {
-    const readStream = fs.createReadStream(`${__dirname}/test.knotta`, "utf-8");
+    const readStream = fs.createReadStream(`${__dirname}/test.ontype`, "utf-8");
     const { errors, result } = await parse(readStream, {
       enableAst: false,
       ast: {

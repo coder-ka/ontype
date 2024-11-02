@@ -1,4 +1,4 @@
-import "knotta/primitive.knotta"
+import "ontype/primitive.ontype"
 
 type User {
     @hogehoge

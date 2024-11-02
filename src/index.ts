@@ -71,7 +71,7 @@ const blankRegex = /^[ \t]$/;
 const typeNameRegex = /^\w+$/;
 const propNameRegex = /^\w+$/;
 const propTypeNameRegex = /^\w+$/;
-const knottaParser = createLLParser<State>(
+const ontypeParser = createLLParser<State>(
   {
     [START]([token], { index, line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
@@ -541,7 +541,7 @@ export async function parse(
   initialState: State,
   options?: ParseOptions
 ) {
-  return knottaParser.parse(lexer(stream), initialState, options);
+  return ontypeParser.parse(lexer(stream), initialState, options);
 }
 
 export async function* lexer(
