@@ -1,12 +1,12 @@
-import { ReadStream } from "fs";
-import { ReadableStream } from "stream/web";
+import type { ReadStream } from "fs";
+import type { Readable } from "stream";
+import type { ReadableStream } from "stream/web";
 import {
   createLLParser,
-  Lexed,
   parseError,
   ParseOptions,
-} from "./util/ll-parsing";
-import { Readable } from "stream";
+  createSimpleLexer,
+} from "@coder-ka/ll-parsing";
 
 export type Decorator = {
   name: string;
@@ -544,64 +544,10 @@ export async function parse(
   return ontypeParser.parse(lexer(stream), initialState, options);
 }
 
-export async function* lexer(
-  stream:
-    | ReadStream
-    | ReadableStream
-    | Readable
-    | AsyncIterable<string | Buffer>
-): Lexed {
-  let token = "";
-  let isQuoting = false;
-  let isEscaping = false;
-  let index = 0;
-  let line = 0;
-  let inlineIndex = 0;
-
-  for await (const buf of stream) {
-    const chunk: string = buf.toString("utf-8");
-    for (let i = 0, imax = chunk.length; i < imax; i++) {
-      index++;
-      inlineIndex++;
-
-      const char = chunk[i];
-
-      if (isEscaping) {
-        token += char;
-        isEscaping = false;
-      } else if (char === "\\") {
-        isEscaping = true;
-      } else if (isQuoting) {
-        if (char === '"') {
-          isQuoting = false;
-          token += '"';
-        } else {
-          token += char;
-        }
-      } else if (separatorRegex.test(char)) {
-        if (token !== "") {
-          yield {
-            tokens: [token],
-            index: index - 1,
-            line,
-            inlineIndex: inlineIndex - 1,
-          };
-          token = "";
-        }
-
-        yield { tokens: [char], index, line, inlineIndex };
-      } else {
-        token += char;
-      }
-
-      if (newlineRegex.test(char)) {
-        line++;
-        inlineIndex = 0;
-      }
-    }
-
-    if (token !== "") {
-      yield { tokens: [token], index, line, inlineIndex };
-    }
-  }
-}
+export const lexer = createSimpleLexer({
+  separatorRegex,
+  newlineRegex,
+  useQuote: true,
+  useEscape: true,
+  escapeChar: "\\",
+});

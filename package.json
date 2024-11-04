@@ -1,6 +1,6 @@
 {
   "name": "ontype",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "ontype is a schema language for domain modeling",
   "main": "./dist/index.cjs",
   "types": "./types/index.d.ts",
@@ -49,6 +49,6 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "parten": "^0.0.10"
+    "@coder-ka/ll-parsing": "^1.0.0"
   }
 }
