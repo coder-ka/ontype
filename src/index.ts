@@ -29,6 +29,7 @@ export type Prop = {
 export type PropType = {
   name: string;
   ref?: string;
+  length?: number;
 };
 export type AST = {
   baseModels: BaseModel[];
@@ -59,18 +60,21 @@ export const PROP_NAME_END = Symbol("PROP_NAME_END");
 export const OPTIONAL_PROP_NAME_END = Symbol("OPTIONAL_PROP_NAME_END");
 export const PROP_TYPE = Symbol("PROP_TYPE");
 export const PROP_TYPE_NAME_END = Symbol("PROP_TYPE_NAME_END");
-export const PROP_REF = Symbol("PROP_REF");
-export const PROP_REF_END = Symbol("PROP_REF_END");
+export const PROP_TYPE_REF = Symbol("PROP_TYPE_REF");
+export const PROP_TYPE_REF_END = Symbol("PROP_TYPE_REF_END");
+export const PROP_TYPE_LENGTH = Symbol("PROP_TYPE_LENGTH");
+export const PROP_TYPE_LENGTH_END = Symbol("PROP_TYPE_LENGTH_END");
 export const PROP_DECORATOR = Symbol("PROP_DECORATOR");
 export const $ = Symbol("$");
 
-const separatorRegex = /^[\s\t\[\],:{}\?]$/;
+const separatorRegex = /^[\s\t\[\]\(\),:{}\?]$/;
 const newlineRegex = /^\r?\n$/;
 const whitespaceRegex = /^[\s\t]$/;
 const blankRegex = /^[ \t]$/;
 const typeNameRegex = /^\w+$/;
 const propNameRegex = /^\w+$/;
 const propTypeNameRegex = /^\w+$/;
+const propTypeLengthRegex = /^\d+$/;
 const ontypeParser = createLLParser<State>(
   {
     [START]([token], { index, line, inlineIndex }, state) {
@@ -429,17 +433,21 @@ const ontypeParser = createLLParser<State>(
       }
 
       if (token === "[") {
-        return [token, PROP_REF];
+        return [token, PROP_TYPE_REF];
+      }
+
+      if (token === "(") {
+        return [token, PROP_TYPE_LENGTH];
       }
 
       return [PROP_DECORATOR];
     },
-    [PROP_REF]([token], { index, line, inlineIndex }, state) {
+    [PROP_TYPE_REF]([token], { index, line, inlineIndex }, state) {
       if (whitespaceRegex.test(token)) {
-        return [token, PROP_REF];
+        return [token, PROP_TYPE_REF];
       }
 
-      if (propTypeNameRegex.test(token)) {
+      if (propNameRegex.test(token)) {
         if (state.enableAst) {
           state.ast.types[state.ast.types.length - 1].props[
             state.ast.types[state.ast.types.length - 1].props.length - 1
@@ -453,7 +461,7 @@ const ontypeParser = createLLParser<State>(
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, PROP_REF_END];
+        return [token, PROP_TYPE_REF_END];
       }
 
       return [
@@ -468,9 +476,9 @@ const ontypeParser = createLLParser<State>(
         PROP_DECORATOR,
       ];
     },
-    [PROP_REF_END]([token], { index, line, inlineIndex }) {
+    [PROP_TYPE_REF_END]([token], { index, line, inlineIndex }) {
       if (whitespaceRegex.test(token)) {
-        return [token, PROP_REF_END];
+        return [token, PROP_TYPE_REF_END];
       }
 
       if (token === "]") {
@@ -480,6 +488,61 @@ const ontypeParser = createLLParser<State>(
       return [
         parseError({
           message: `Unexpected end of property reference: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        PROP_DECORATOR,
+      ];
+    },
+    [PROP_TYPE_LENGTH]([token], { index, line, inlineIndex }, state) {
+      if (whitespaceRegex.test(token)) {
+        return [token, PROP_TYPE_LENGTH];
+      }
+
+      if (propTypeLengthRegex.test(token)) {
+        if (state.enableAst) {
+          state.ast.types[state.ast.types.length - 1].props[
+            state.ast.types[state.ast.types.length - 1].props.length - 1
+          ].type.length = Number(token);
+        }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "prop-length",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, PROP_TYPE_LENGTH_END];
+      }
+
+      return [
+        parseError({
+          message: `Invalid property length: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        PROP_DECORATOR,
+      ];
+    },
+    [PROP_TYPE_LENGTH_END]([token], { index, line, inlineIndex }) {
+      if (whitespaceRegex.test(token)) {
+        return [token, PROP_TYPE_LENGTH_END];
+      }
+
+      if (token === ")") {
+        return [token, TYPE_CONTENT];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected end of property length: '${token}'.`,
           token,
           index: index - token.length,
           line,

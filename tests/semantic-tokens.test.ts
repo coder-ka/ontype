@@ -55,6 +55,7 @@ export const ontypeSemanticTokensTest = test("ontype semantic tokens test").do(
       { type: "prop-type-name", length: 4, line: 22, inlineIndex: 8 },
       { type: "prop-name", length: 5, line: 23, inlineIndex: 4 },
       { type: "prop-type-name", length: 6, line: 23, inlineIndex: 11 },
+      { type: "prop-length", length: 2, line: 23, inlineIndex: 18 },
       { type: "prop-name", length: 8, line: 24, inlineIndex: 4 },
       { type: "prop-optional", length: 1, line: 24, inlineIndex: 12 },
       { type: "prop-type-name", length: 8, line: 24, inlineIndex: 15 },

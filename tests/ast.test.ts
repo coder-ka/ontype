@@ -102,7 +102,7 @@ export const ontypeAstTest = test("ontype ast test").do(async () => {
           },
           {
             name: "title",
-            type: { name: "string" },
+            type: { name: "string", length: 10 },
             decorators: [],
             optional: false,
           },
