@@ -10,6 +10,7 @@ export const ontypeAstTest = test("ontype ast test").do(async () => {
     ast: {
       baseModels: [],
       types: [],
+      enums: [],
     },
     enableSemanticTokens: false,
     semanticTokens: [],
@@ -120,6 +121,25 @@ export const ontypeAstTest = test("ontype ast test").do(async () => {
           },
         ],
         decorators: [],
+      },
+    ],
+    enums: [
+      {
+        name: "TodoStatus",
+        items: [
+          {
+            name: "READY",
+            value: 0,
+          },
+          {
+            name: "IN_PROGRESS",
+            value: 1,
+          },
+          {
+            name: "DONE",
+            value: "done",
+          },
+        ],
       },
     ],
   });

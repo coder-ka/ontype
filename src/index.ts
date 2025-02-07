@@ -20,6 +20,15 @@ export type Type = {
   props: Prop[];
   decorators: Decorator[];
 };
+export type Enum = {
+  name: string;
+  items: EnumItem[];
+};
+export type EnumItem = {
+  name: string;
+  value: EnumValue;
+};
+export type EnumValue = number | string;
 export type Prop = {
   name: string;
   type: PropType;
@@ -34,6 +43,7 @@ export type PropType = {
 export type AST = {
   baseModels: BaseModel[];
   types: Type[];
+  enums: Enum[];
 };
 
 export type State = {
@@ -41,7 +51,23 @@ export type State = {
   ast: AST;
   enableSemanticTokens: boolean;
   semanticTokens: {
-    type: string;
+    type:
+      | "import"
+      | "string"
+      | "type"
+      | "type-name"
+      | "type-decorator"
+      | "prop-name"
+      | "prop-type-name"
+      | "prop-ref"
+      | "prop-length"
+      | "prop-decorator"
+      | "prop-optional"
+      | "enum"
+      | "enum-name"
+      | "enum-item-name"
+      | "enum-item-integer-value"
+      | "enum-item-string-value";
     length: number;
     line: number;
     inlineIndex: number;
@@ -65,6 +91,12 @@ export const PROP_TYPE_REF_END = Symbol("PROP_TYPE_REF_END");
 export const PROP_TYPE_LENGTH = Symbol("PROP_TYPE_LENGTH");
 export const PROP_TYPE_LENGTH_END = Symbol("PROP_TYPE_LENGTH_END");
 export const PROP_DECORATOR = Symbol("PROP_DECORATOR");
+export const ENUM_NAME = Symbol("ENUM_NAME");
+export const ENUM_CONTENT_START = Symbol("ENUM_CONTENT_START");
+export const ENUM_CONTENT = Symbol("ENUM_CONTENT");
+export const ENUM_ITEM_NAME = Symbol("ENUM_ITEM_NAME");
+export const ENUM_ITEM_NAME_END = Symbol("ENUM_ITEM_NAME_END");
+export const ENUM_ITEM_VALUE = Symbol("ENUM_ITEM_VALUE");
 export const $ = Symbol("$");
 
 const separatorRegex = /^[\s\t\[\]\(\),:{}\?]$/;
@@ -75,6 +107,9 @@ const typeNameRegex = /^\w+$/;
 const propNameRegex = /^\w+$/;
 const propTypeNameRegex = /^\w+$/;
 const propTypeLengthRegex = /^\d+$/;
+const enumNameRegex = /^\w+$/;
+const enumItemNameRegex = /^\w+$/;
+const integerRegex = /^\d+$/;
 const ontypeParser = createLLParser<State>(
   {
     [START]([token], { index, line, inlineIndex }, state) {
@@ -104,6 +139,18 @@ const ontypeParser = createLLParser<State>(
           });
         }
         return [token, TYPE_NAME];
+      }
+
+      if (token === "enum") {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, ENUM_NAME];
       }
 
       return [
@@ -165,6 +212,18 @@ const ontypeParser = createLLParser<State>(
           });
         }
         return [token, TYPE_NAME];
+      }
+
+      if (token === "enum") {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, ENUM_NAME];
       }
 
       return [
@@ -234,7 +293,7 @@ const ontypeParser = createLLParser<State>(
           inlineIndex: inlineIndex - token.length,
         }),
         token,
-        START,
+        MODEL,
       ];
     },
     [TYPE_CONTENT]([token], { index, line, inlineIndex }) {
@@ -578,6 +637,195 @@ const ontypeParser = createLLParser<State>(
       }
 
       return [TYPE_CONTENT];
+    },
+    [ENUM_NAME]([token], { index, line, inlineIndex }, state) {
+      if (whitespaceRegex.test(token)) {
+        return [token, ENUM_NAME];
+      }
+
+      if (enumNameRegex.test(token)) {
+        if (state.enableAst) {
+          state.ast.enums.push({
+            name: token,
+            items: [],
+          });
+        }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum-name",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+
+        return [token, ENUM_CONTENT_START];
+      }
+
+      return [
+        parseError({
+          message: `Invalid enum name: '${token}'.`,
+          token: token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        ENUM_CONTENT_START,
+      ];
+    },
+    [ENUM_CONTENT_START]([token], { index, line, inlineIndex }) {
+      if (whitespaceRegex.test(token)) {
+        return [token, ENUM_CONTENT_START];
+      }
+
+      if (token === "{") {
+        return [token, ENUM_CONTENT];
+      }
+
+      return [
+        parseError({
+          message: `Expected '{' after enum name.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        MODEL,
+      ];
+    },
+    [ENUM_CONTENT]([token], { index, line, inlineIndex }) {
+      if (whitespaceRegex.test(token)) {
+        return [token, ENUM_CONTENT];
+      }
+
+      if (enumItemNameRegex.test(token)) {
+        return [ENUM_ITEM_NAME];
+      }
+
+      if (token === "}") {
+        return [token, MODEL];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        ENUM_CONTENT,
+      ];
+    },
+    [ENUM_ITEM_NAME]([token], { index, line, inlineIndex }, state) {
+      if (whitespaceRegex.test(token)) {
+        return [token, ENUM_ITEM_NAME];
+      }
+
+      if (enumItemNameRegex.test(token)) {
+        if (state.enableAst) {
+          state.ast.enums[state.ast.enums.length - 1].items.push({
+            name: token,
+            value: undefined as unknown as EnumValue,
+          });
+        }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum-item-name",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, ENUM_ITEM_NAME_END];
+      }
+
+      return [
+        parseError({
+          message: `Invalid enum item name: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        ENUM_ITEM_NAME,
+      ];
+    },
+    [ENUM_ITEM_NAME_END]([token], { index, line, inlineIndex }) {
+      if (whitespaceRegex.test(token)) {
+        return [token, ENUM_ITEM_NAME_END];
+      }
+
+      if (token.startsWith(":")) {
+        return [token, ENUM_ITEM_VALUE];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index,
+          line,
+          inlineIndex,
+        }),
+        token,
+        ENUM_ITEM_NAME_END,
+      ];
+    },
+    [ENUM_ITEM_VALUE]([token], { index, line, inlineIndex }, state) {
+      if (whitespaceRegex.test(token)) {
+        return [token, ENUM_ITEM_VALUE];
+      }
+
+      if (integerRegex.test(token)) {
+        if (state.enableAst) {
+          state.ast.enums[state.ast.enums.length - 1].items[
+            state.ast.enums[state.ast.enums.length - 1].items.length - 1
+          ].value = Number(token);
+        }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum-item-integer-value",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, ENUM_CONTENT];
+      }
+
+      if (token.startsWith('"') && token.endsWith('"')) {
+        if (state.enableAst) {
+          state.ast.enums[state.ast.enums.length - 1].items[
+            state.ast.enums[state.ast.enums.length - 1].items.length - 1
+          ].value = token.slice(1, -1);
+        }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum-item-string-value",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, ENUM_CONTENT];
+      }
+
+      return [
+        parseError({
+          message: `Invalid enum value: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        ENUM_CONTENT,
+      ];
     },
     [$]([token], { index, line, inlineIndex }, _) {
       return [

@@ -25,3 +25,9 @@ type Todo {
     deadline?: datetime @nullable
     authorId: User[id]
 }
+
+enum TodoStatus {
+    READY: 0
+    IN_PROGRESS: 1
+    DONE: "done"
+}

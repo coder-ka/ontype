@@ -11,6 +11,7 @@ export const ontypeSemanticTokensTest = test("ontype semantic tokens test").do(
       ast: {
         baseModels: [],
         types: [],
+        enums: [],
       },
       enableSemanticTokens: true,
       semanticTokens: [],
@@ -63,6 +64,29 @@ export const ontypeSemanticTokensTest = test("ontype semantic tokens test").do(
       { type: "prop-name", length: 8, line: 25, inlineIndex: 4 },
       { type: "prop-type-name", length: 4, line: 25, inlineIndex: 14 },
       { type: "prop-ref", length: 2, line: 25, inlineIndex: 19 },
+      { type: "enum", length: 4, line: 28, inlineIndex: 0 },
+      { type: "enum-name", length: 10, line: 28, inlineIndex: 5 },
+      { type: "enum-item-name", length: 5, line: 29, inlineIndex: 4 },
+      {
+        type: "enum-item-integer-value",
+        length: 1,
+        line: 29,
+        inlineIndex: 11,
+      },
+      { type: "enum-item-name", length: 11, line: 30, inlineIndex: 4 },
+      {
+        type: "enum-item-integer-value",
+        length: 1,
+        line: 30,
+        inlineIndex: 17,
+      },
+      { type: "enum-item-name", length: 4, line: 31, inlineIndex: 4 },
+      {
+        type: "enum-item-string-value",
+        length: 6,
+        line: 31,
+        inlineIndex: 10,
+      },
     ]);
   }
 );
