@@ -1,4 +1,4 @@
-import "ontype/primitive.ontype"
+import Primitive from "ontype/primitive.ontype"
 
 type User {
     @hogehoge

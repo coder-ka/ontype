@@ -12,7 +12,8 @@ export type Decorator = {
   name: string;
   args: string[];
 };
-export type BaseModel = {
+export type Import = {
+  alias: string;
   path: string;
 };
 export type Type = {
@@ -41,7 +42,7 @@ export type PropType = {
   length?: number;
 };
 export type AST = {
-  baseModels: BaseModel[];
+  imports: Import[];
   types: Type[];
   enums: Enum[];
 };
@@ -53,6 +54,8 @@ export type State = {
   semanticTokens: {
     type:
       | "import"
+      | "import-alias"
+      | "import-from"
       | "string"
       | "type"
       | "type-name"
@@ -75,6 +78,8 @@ export type State = {
 };
 
 export const START = Symbol("START");
+export const IMPORT_ALIAS = Symbol("IMPORT_ALIAS");
+export const IMPORT_FROM = Symbol("IMPORT_FROM");
 export const IMPORT_PATH = Symbol("IMPORT_PATH");
 export const MODEL = Symbol("MODEL");
 export const TYPE_NAME = Symbol("TYPE_NAME");
@@ -103,6 +108,7 @@ const separatorRegex = /^[\s\t\[\]\(\),:{}\?]$/;
 const newlineRegex = /^\r?\n$/;
 const whitespaceRegex = /^[\s\t]$/;
 const blankRegex = /^[ \t]$/;
+const importAliasRegex = /^\w+$/;
 const typeNameRegex = /^\w+$/;
 const propNameRegex = /^\w+$/;
 const propTypeNameRegex = /^\w+$/;
@@ -126,7 +132,7 @@ const ontypeParser = createLLParser<State>(
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, IMPORT_PATH];
+        return [token, IMPORT_ALIAS];
       }
 
       if (token === "type") {
@@ -165,6 +171,67 @@ const ontypeParser = createLLParser<State>(
         START,
       ];
     },
+    [IMPORT_ALIAS]([token], { index, line, inlineIndex }, state) {
+      if (blankRegex.test(token)) {
+        return [token, IMPORT_ALIAS];
+      }
+
+      if (importAliasRegex.test(token)) {
+        if (state.enableAst) {
+          state.ast.imports.push({ alias: token, path: "" });
+        }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "import-alias",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, IMPORT_FROM];
+      }
+
+      return [
+        parseError({
+          message: `Invalid import alias: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        IMPORT_ALIAS,
+      ];
+    },
+    [IMPORT_FROM]([token], { index, line, inlineIndex }, state) {
+      if (whitespaceRegex.test(token)) {
+        return [token, IMPORT_FROM];
+      }
+
+      if (token === "from") {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "import-from",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+        return [token, IMPORT_PATH];
+      }
+
+      return [
+        parseError({
+          message: `Expected 'from' after import alias.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        IMPORT_ALIAS,
+      ];
+    },
     [IMPORT_PATH]([token], { index, line, inlineIndex }, state) {
       if (blankRegex.test(token)) {
         return [token, IMPORT_PATH];
@@ -172,7 +239,8 @@ const ontypeParser = createLLParser<State>(
 
       if (token.startsWith('"') && token.endsWith('"')) {
         if (state.enableAst) {
-          state.ast.baseModels.push({ path: token.slice(1, -1) });
+          const path = token.slice(1, -1);
+          state.ast.imports[state.ast.imports.length - 1].path = path;
         }
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
@@ -187,7 +255,7 @@ const ontypeParser = createLLParser<State>(
 
       return [
         parseError({
-          message: `Expected a quoted string after 'import'.`,
+          message: `Expected a quoted string after 'import * from'.`,
           token,
           index: index - token.length,
           line,
@@ -843,12 +911,14 @@ const ontypeParser = createLLParser<State>(
   () => [START, $]
 );
 
+export type InputStream =
+  | ReadStream
+  | ReadableStream
+  | Readable
+  | AsyncIterable<string | Buffer>;
+
 export async function parse(
-  stream:
-    | ReadStream
-    | ReadableStream
-    | Readable
-    | AsyncIterable<string | Buffer>,
+  stream: InputStream,
   initialState: State,
   options?: ParseOptions
 ) {
@@ -862,3 +932,7 @@ export const lexer = createSimpleLexer({
   useEscape: true,
   escapeChar: "\\",
 });
+
+// template literal tag for ontype
+// Just an alias for String.raw enabling syntax highlighting in editors
+export const ontype = String.raw;

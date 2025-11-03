@@ -8,7 +8,7 @@ export const ontypeAstTest = test("ontype ast test").do(async () => {
   const { errors, result } = await parse(readStream, {
     enableAst: true,
     ast: {
-      baseModels: [],
+      imports: [],
       types: [],
       enums: [],
     },
@@ -18,7 +18,7 @@ export const ontypeAstTest = test("ontype ast test").do(async () => {
 
   assert.deepStrictEqual(errors, []);
   assert.deepStrictEqual(result.ast, {
-    baseModels: [{ path: "ontype/primitive.ontype" }],
+    imports: [{ alias: "Primitive", path: "ontype/primitive.ontype" }],
     types: [
       {
         name: "User",

@@ -9,7 +9,7 @@ export const ontypeSemanticTokensTest = test("ontype semantic tokens test").do(
     const { errors, result } = await parse(readStream, {
       enableAst: false,
       ast: {
-        baseModels: [],
+        imports: [],
         types: [],
         enums: [],
       },
@@ -21,7 +21,9 @@ export const ontypeSemanticTokensTest = test("ontype semantic tokens test").do(
     // console.log(result.semanticTokens);
     assert.deepStrictEqual(result.semanticTokens, [
       { type: "import", length: 6, line: 0, inlineIndex: 0 },
-      { type: "string", length: 25, line: 0, inlineIndex: 7 },
+      { type: "import-alias", length: 9, line: 0, inlineIndex: 7 },
+      { type: "import-from", length: 4, line: 0, inlineIndex: 17 },
+      { type: "string", length: 25, line: 0, inlineIndex: 22 },
       { type: "type", length: 4, line: 2, inlineIndex: 0 },
       { type: "type-name", length: 4, line: 2, inlineIndex: 5 },
       { type: "type-decorator", length: 9, line: 3, inlineIndex: 4 },
