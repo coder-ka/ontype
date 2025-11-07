@@ -352,9 +352,13 @@ const ontypeParser = createLLParser<State>(
         return [token, TYPE_CONTENT];
       }
 
+      if (token.startsWith("@")) {
+        return [TYPE_DECORATOR];
+      }
+
       return [
         parseError({
-          message: `Expected '{' after type name.`,
+          message: `Unexpected token: '${token}'.`,
           token,
           index: index - token.length,
           line,
@@ -367,10 +371,6 @@ const ontypeParser = createLLParser<State>(
     [TYPE_CONTENT]([token], { index, line, inlineIndex }) {
       if (whitespaceRegex.test(token)) {
         return [token, TYPE_CONTENT];
-      }
-
-      if (token.startsWith("@")) {
-        return [TYPE_DECORATOR];
       }
 
       if (propNameRegex.test(token)) {
@@ -409,7 +409,7 @@ const ontypeParser = createLLParser<State>(
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, TYPE_CONTENT];
+        return [token, TYPE_CONTENT_START];
       }
 
       return [

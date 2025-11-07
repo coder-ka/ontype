@@ -1,7 +1,6 @@
 import Primitive from "ontype/primitive.ontype"
 
-type User {
-    @hogehoge
+type User @hogehoge {
     id: char
     password: string @hidden
     passwordSalt: string @hidden
