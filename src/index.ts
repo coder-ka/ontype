@@ -12,10 +12,6 @@ export type Decorator = {
   name: string;
   args: string[];
 };
-export type Import = {
-  alias: string;
-  path: string;
-};
 export type Type = {
   name: string;
   props: Prop[];
@@ -42,7 +38,6 @@ export type PropType = {
   length?: number;
 };
 export type AST = {
-  imports: Import[];
   types: Type[];
   enums: Enum[];
 };
@@ -53,24 +48,21 @@ export type State = {
   enableSemanticTokens: boolean;
   semanticTokens: {
     type:
-      | "import"
-      | "import-alias"
-      | "import-from"
-      | "string"
-      | "type"
-      | "type-name"
-      | "type-decorator"
-      | "prop-name"
-      | "prop-type-name"
-      | "prop-ref"
-      | "prop-length"
-      | "prop-decorator"
-      | "prop-optional"
-      | "enum"
-      | "enum-name"
-      | "enum-item-name"
-      | "enum-item-integer-value"
-      | "enum-item-string-value";
+    | "string"
+    | "type"
+    | "type-name"
+    | "type-decorator"
+    | "prop-name"
+    | "prop-type-name"
+    | "prop-ref"
+    | "prop-length"
+    | "prop-decorator"
+    | "prop-optional"
+    | "enum"
+    | "enum-name"
+    | "enum-item-name"
+    | "enum-item-integer-value"
+    | "enum-item-string-value";
     length: number;
     line: number;
     inlineIndex: number;
@@ -78,9 +70,6 @@ export type State = {
 };
 
 export const START = Symbol("START");
-export const IMPORT_ALIAS = Symbol("IMPORT_ALIAS");
-export const IMPORT_FROM = Symbol("IMPORT_FROM");
-export const IMPORT_PATH = Symbol("IMPORT_PATH");
 export const MODEL = Symbol("MODEL");
 export const TYPE_NAME = Symbol("TYPE_NAME");
 export const TYPE_CONTENT_START = Symbol("TYPE_CONTENT_START");
@@ -107,8 +96,7 @@ export const $ = Symbol("$");
 const separatorRegex = /^[\s\t\[\]\(\),:{}\?]$/;
 const newlineRegex = /^\r?\n$/;
 const whitespaceRegex = /^[\s\t]$/;
-const blankRegex = /^[ \t]$/;
-const importAliasRegex = /^\w+$/;
+// const blankRegex = /^[ \t]$/;
 const typeNameRegex = /^\w+$/;
 const propNameRegex = /^\w+$/;
 const propTypeNameRegex = /^\w+$/;
@@ -123,17 +111,6 @@ const ontypeParser = createLLParser<State>(
         return [token, START];
       }
 
-      if (token === "import") {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "import",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, IMPORT_ALIAS];
-      }
 
       if (token === "type") {
         if (state.enableSemanticTokens) {
@@ -162,100 +139,6 @@ const ontypeParser = createLLParser<State>(
       return [
         parseError({
           message: `Unexpected token: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        START,
-      ];
-    },
-    [IMPORT_ALIAS]([token], { index, line, inlineIndex }, state) {
-      if (blankRegex.test(token)) {
-        return [token, IMPORT_ALIAS];
-      }
-
-      if (importAliasRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.imports.push({ alias: token, path: "" });
-        }
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "import-alias",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, IMPORT_FROM];
-      }
-
-      return [
-        parseError({
-          message: `Invalid import alias: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        IMPORT_ALIAS,
-      ];
-    },
-    [IMPORT_FROM]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, IMPORT_FROM];
-      }
-
-      if (token === "from") {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "import-from",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, IMPORT_PATH];
-      }
-
-      return [
-        parseError({
-          message: `Expected 'from' after import alias.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        IMPORT_ALIAS,
-      ];
-    },
-    [IMPORT_PATH]([token], { index, line, inlineIndex }, state) {
-      if (blankRegex.test(token)) {
-        return [token, IMPORT_PATH];
-      }
-
-      if (token.startsWith('"') && token.endsWith('"')) {
-        if (state.enableAst) {
-          const path = token.slice(1, -1);
-          state.ast.imports[state.ast.imports.length - 1].path = path;
-        }
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "string",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, START];
-      }
-
-      return [
-        parseError({
-          message: `Expected a quoted string after 'import * from'.`,
           token,
           index: index - token.length,
           line,
