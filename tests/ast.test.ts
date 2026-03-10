@@ -1,10 +1,11 @@
-import fs from "fs";
-import { test } from "@coder-ka/testing";
+import fs from "node:fs";
+import test from "node:test";
 import { parse } from "../src";
 import assert from "assert";
 
-export const ontypeAstTest = test("ontype ast test").do(async () => {
-  const readStream = fs.createReadStream(`${__dirname}/test.ontype`, "utf-8");
+test("ontype ast test", async () => {
+  const readStream = fs.createReadStream(`./tests/test.ontype`, "utf-8");
+
   const { errors, result } = await parse(readStream, {
     enableAst: true,
     ast: {
