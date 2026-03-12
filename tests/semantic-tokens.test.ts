@@ -17,7 +17,6 @@ test("ontype semantic tokens test", async () => {
   });
 
   assert.deepStrictEqual(errors, []);
-  // console.log(result.semanticTokens);
   assert.deepStrictEqual(result.semanticTokens, [
     { type: "type", length: 4, line: 0, inlineIndex: 0 },
     { type: "type-name", length: 4, line: 0, inlineIndex: 5 },
@@ -69,7 +68,6 @@ test("ontype semantic tokens test", async () => {
     { type: "enum-item-integer-value", length: 1, line: 27, inlineIndex: 17 },
     { type: "enum-item-name", length: 4, line: 28, inlineIndex: 4 },
     { type: "enum-item-string-value", length: 6, line: 28, inlineIndex: 10 },
-
   ]);
 }
 );
