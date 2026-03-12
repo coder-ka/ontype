@@ -811,9 +811,6 @@ export async function parse(
 export const lexer = createSimpleLexer({
   separatorRegex,
   newlineRegex,
-  useQuote: true,
-  useEscape: true,
-  escapeChar: "\\",
 });
 
 // template literal tag for ontype
