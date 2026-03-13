@@ -6,7 +6,7 @@ import assert from "assert";
 test("ontype ast test", async () => {
   const readStream = fs.createReadStream(`./tests/test.ontype`, "utf-8");
 
-  const { errors, result } = await parse(readStream, {
+  const { errors, state } = await parse(readStream, {
     enableAst: true,
     ast: {
       types: [],
@@ -17,7 +17,7 @@ test("ontype ast test", async () => {
   });
 
   assert.deepStrictEqual(errors, []);
-  assert.deepStrictEqual(result.ast, {
+  assert.deepStrictEqual(state.ast, {
     types: [
       {
         name: "User",
