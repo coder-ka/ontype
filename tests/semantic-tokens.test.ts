@@ -6,7 +6,7 @@ import assert from "assert";
 test("ontype semantic tokens test", async () => {
   const readStream = fs.createReadStream(`./tests/test.ontype`, "utf-8");
 
-  const { errors, result } = await parse(readStream, {
+  const { errors, state } = await parse(readStream, {
     enableAst: false,
     ast: {
       types: [],
@@ -17,7 +17,7 @@ test("ontype semantic tokens test", async () => {
   });
 
   assert.deepStrictEqual(errors, []);
-  assert.deepStrictEqual(result.semanticTokens, [
+  assert.deepStrictEqual(state.semanticTokens, [
     { type: "type", length: 4, line: 0, inlineIndex: 0 },
     { type: "type-name", length: 4, line: 0, inlineIndex: 5 },
     { type: "type-decorator", length: 9, line: 0, inlineIndex: 10 },
