@@ -58,8 +58,6 @@ export type State = {
     line: number;
     inlineIndex: number;
   }[];
-  stringBuffer: string;
-  stringBufferStartInlineIndex: number | null;
 };
 
 export const S = Symbol("S");
@@ -602,6 +600,15 @@ const ontypeParser = createLLParser<State>(
       }
 
       if (token === '"') {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum-item-string-value",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+
         return [token, ENUM_ITEM_STRING_VALUE_START];
       }
 
@@ -631,10 +638,17 @@ const ontypeParser = createLLParser<State>(
       { index, line, inlineIndex },
       state,
     ) {
-      state.stringBuffer = "";
-      state.stringBufferStartInlineIndex = inlineIndex - token.length - 1;
       if (enumItemStringValueRegex.test(token)) {
-        return [ENUM_ITEM_STRING_VALUE];
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum-item-string-value",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+
+        return [token, ENUM_ITEM_STRING_VALUE];
       }
 
       if (token === '"') {
@@ -655,42 +669,26 @@ const ontypeParser = createLLParser<State>(
     },
     [ENUM_ITEM_STRING_VALUE]([token], { index, line, inlineIndex }, state) {
       if (enumItemStringValueRegex.test(token)) {
-        state.stringBuffer += token;
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum-item-string-value",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
 
         return [token, ENUM_ITEM_STRING_VALUE];
       }
 
       if (token === '"') {
-        if (
-          state.enableSemanticTokens &&
-          state.stringBuffer !== "" &&
-          state.stringBufferStartInlineIndex !== null
-        ) {
-          const lines = state.stringBuffer.split(/\r?\n/);
-          if (lines.length === 1) {
-            state.semanticTokens.push({
-              type: "enum-item-string-value",
-              length: state.stringBuffer.length + 2,
-              line,
-              inlineIndex: inlineIndex - state.stringBuffer.length - 2,
-            });
-          } else {
-            const stringBufferStartInlineIndex =
-              state.stringBufferStartInlineIndex;
-
-            lines.forEach((row, i) => {
-              const lineIndex = line - (lines.length - 1) + i;
-              const isLast = i === lines.length - 1;
-              const length = row.length + (i === 0 || isLast ? 1 : 0);
-
-              state.semanticTokens.push({
-                type: "enum-item-string-value",
-                length,
-                line: lineIndex,
-                inlineIndex: i === 0 ? stringBufferStartInlineIndex : 0,
-              });
-            });
-          }
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "enum-item-string-value",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
         }
 
         return [token, ENUM_ITEM_STRING_VALUE_END];
@@ -708,12 +706,9 @@ const ontypeParser = createLLParser<State>(
         ENUM_BODY,
       ];
     },
-    [ENUM_ITEM_STRING_VALUE_END]([token], _, state) {
+    [ENUM_ITEM_STRING_VALUE_END]([token]) {
       const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_VALUE_END);
       if (ignoreWhiteSpace) return ignoreWhiteSpace;
-
-      state.stringBuffer = "";
-      state.stringBufferStartInlineIndex = null;
 
       return [ENUM_ITEM_VALUE_END];
     },

@@ -9,9 +9,9 @@ test("ontype semantic tokens test", async () => {
   const { errors, state } = await parse(readStream, {
     enableSemanticTokens: true,
     semanticTokens: [],
-    stringBuffer: "",
-    stringBufferStartInlineIndex: null,
   });
+
+  console.log(JSON.stringify(state.semanticTokens));
 
   assert.deepStrictEqual(errors, []);
   assert.deepStrictEqual(state.semanticTokens, [
@@ -62,14 +62,38 @@ test("ontype semantic tokens test", async () => {
     { type: "enum-item-name", length: 11, line: 27, inlineIndex: 4 },
     { type: "enum-item-integer-value", length: 1, line: 27, inlineIndex: 17 },
     { type: "enum-item-name", length: 4, line: 28, inlineIndex: 4 },
-    { type: "enum-item-string-value", length: 6, line: 28, inlineIndex: 10 },
+    { type: "enum-item-string-value", length: 1, line: 28, inlineIndex: 10 },
+    { type: "enum-item-string-value", length: 4, line: 28, inlineIndex: 11 },
+    { type: "enum-item-string-value", length: 1, line: 28, inlineIndex: 15 },
     { type: "enum-item-name", length: 6, line: 29, inlineIndex: 4 },
-    { type: "enum-item-string-value", length: 35, line: 29, inlineIndex: 12 },
-    { type: "enum-item-string-value", length: 0, line: 30, inlineIndex: 0 },
-    { type: "enum-item-string-value", length: 8, line: 31, inlineIndex: 0 },
-    { type: "enum-item-string-value", length: 9, line: 32, inlineIndex: 0 },
-    { type: "enum-item-string-value", length: 8, line: 33, inlineIndex: 0 },
-    { type: "enum-item-string-value", length: 0, line: 34, inlineIndex: 0 },
-    { type: "enum-item-string-value", length: 3, line: 35, inlineIndex: 0 },
+    { type: "enum-item-string-value", length: 1, line: 29, inlineIndex: 12 },
+    { type: "enum-item-string-value", length: 4, line: 29, inlineIndex: 13 },
+    { type: "enum-item-string-value", length: 1, line: 29, inlineIndex: 17 },
+    { type: "enum-item-string-value", length: 2, line: 29, inlineIndex: 18 },
+    { type: "enum-item-string-value", length: 1, line: 29, inlineIndex: 20 },
+    { type: "enum-item-string-value", length: 10, line: 29, inlineIndex: 21 },
+    { type: "enum-item-string-value", length: 1, line: 29, inlineIndex: 31 },
+    { type: "enum-item-string-value", length: 4, line: 29, inlineIndex: 32 },
+    { type: "enum-item-string-value", length: 1, line: 29, inlineIndex: 36 },
+    { type: "enum-item-string-value", length: 5, line: 29, inlineIndex: 37 },
+    { type: "enum-item-string-value", length: 1, line: 29, inlineIndex: 42 },
+    { type: "enum-item-string-value", length: 4, line: 29, inlineIndex: 43 },
+    { type: "enum-item-string-value", length: 1, line: 29, inlineIndex: 47 },
+    { type: "enum-item-string-value", length: 1, line: 30, inlineIndex: 0 },
+    { type: "enum-item-string-value", length: 2, line: 31, inlineIndex: 0 },
+    { type: "enum-item-string-value", length: 1, line: 31, inlineIndex: 2 },
+    { type: "enum-item-string-value", length: 5, line: 31, inlineIndex: 3 },
+    { type: "enum-item-string-value", length: 1, line: 31, inlineIndex: 8 },
+    { type: "enum-item-string-value", length: 2, line: 32, inlineIndex: 0 },
+    { type: "enum-item-string-value", length: 1, line: 32, inlineIndex: 2 },
+    { type: "enum-item-string-value", length: 6, line: 32, inlineIndex: 3 },
+    { type: "enum-item-string-value", length: 1, line: 32, inlineIndex: 9 },
+    { type: "enum-item-string-value", length: 2, line: 33, inlineIndex: 0 },
+    { type: "enum-item-string-value", length: 1, line: 33, inlineIndex: 2 },
+    { type: "enum-item-string-value", length: 5, line: 33, inlineIndex: 3 },
+    { type: "enum-item-string-value", length: 1, line: 33, inlineIndex: 8 },
+    { type: "enum-item-string-value", length: 1, line: 34, inlineIndex: 0 },
+    { type: "enum-item-string-value", length: 2, line: 35, inlineIndex: 0 },
+    { type: "enum-item-string-value", length: 1, line: 35, inlineIndex: 2 },
   ]);
 });
