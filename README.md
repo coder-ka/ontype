@@ -54,7 +54,6 @@ const readStream = fs.createReadStream('./example.ontype', "utf-8");
 const { errors, result } = await parse(readStream, {
   enableAst: true,
   ast: {
-    imports: [],
     types: [],
     enums: [],
   },

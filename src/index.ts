@@ -1,4 +1,4 @@
-import type { ReadStream } from "fs";
+import { type ReadStream } from "fs";
 import type { Readable } from "stream";
 import type { ReadableStream } from "stream/web";
 import {
@@ -15,7 +15,6 @@ export type Decorator = {
 export type Type = {
   name: string;
   props: Prop[];
-  decorators: Decorator[];
 };
 export type Enum = {
   name: string;
@@ -37,144 +36,125 @@ export type PropType = {
   ref?: string;
   length?: number;
 };
-export type AST = {
-  types: Type[];
-  enums: Enum[];
-};
 
 export type State = {
-  enableAst: boolean;
-  ast: AST;
   enableSemanticTokens: boolean;
   semanticTokens: {
     type:
-    | "string"
-    | "type"
-    | "type-name"
-    | "type-decorator"
-    | "prop-name"
-    | "prop-type-name"
-    | "prop-ref"
-    | "prop-length"
-    | "prop-decorator"
-    | "prop-optional"
-    | "enum"
-    | "enum-name"
-    | "enum-item-name"
-    | "enum-item-integer-value"
-    | "enum-item-string-value";
+      | "type-keyword"
+      | "type-name"
+      | "prop-name"
+      | "prop-type-name"
+      | "prop-type-ref"
+      | "prop-type-length"
+      | "prop-decorator"
+      | "prop-optional"
+      | "enum-keyword"
+      | "enum-name"
+      | "enum-item-name"
+      | "enum-item-integer-value"
+      | "enum-item-string-value";
     length: number;
     line: number;
     inlineIndex: number;
   }[];
+  stringBuffer: string;
+  stringBufferStartInlineIndex: number | null;
 };
 
-export const START = Symbol("START");
+export const S = Symbol("S");
 export const MODEL = Symbol("MODEL");
+export const TYPE_KEYWORD = Symbol("TYPE_KEYWORD");
 export const TYPE_NAME = Symbol("TYPE_NAME");
-export const TYPE_CONTENT_START = Symbol("TYPE_CONTENT_START");
-export const TYPE_CONTENT = Symbol("TYPE_CONTENT");
-export const TYPE_DECORATOR = Symbol("TYPE_DECORATOR");
+export const TYPE_BODY_START = Symbol("TYPE_BODY_START");
+export const TYPE_BODY = Symbol("TYPE_BODY");
+export const TYPE_BODY_END = Symbol("TYPE_BODY_END");
 export const PROP_NAME = Symbol("PROP_NAME");
+export const PROP_NAME_OPTIONAL_MODIFIER = Symbol(
+  "PROP_NAME_OPTIONAL_MODIFIER",
+);
 export const PROP_NAME_END = Symbol("PROP_NAME_END");
-export const OPTIONAL_PROP_NAME_END = Symbol("OPTIONAL_PROP_NAME_END");
-export const PROP_TYPE = Symbol("PROP_TYPE");
-export const PROP_TYPE_NAME_END = Symbol("PROP_TYPE_NAME_END");
+export const PROP_TYPE_NAME = Symbol("PROP_TYPE_NAME");
+export const PROP_TYPE_END = Symbol("PROP_TYPE_END");
+export const PROP_TYPE_REF_START = Symbol("PROP_TYPE_REF_START");
 export const PROP_TYPE_REF = Symbol("PROP_TYPE_REF");
 export const PROP_TYPE_REF_END = Symbol("PROP_TYPE_REF_END");
+export const PROP_TYPE_LENGTH_START = Symbol("PROP_TYPE_LENGTH_START");
 export const PROP_TYPE_LENGTH = Symbol("PROP_TYPE_LENGTH");
 export const PROP_TYPE_LENGTH_END = Symbol("PROP_TYPE_LENGTH_END");
 export const PROP_DECORATOR = Symbol("PROP_DECORATOR");
+export const ENUM_KEYWORD = Symbol("ENUM_KEYWORD");
 export const ENUM_NAME = Symbol("ENUM_NAME");
-export const ENUM_CONTENT_START = Symbol("ENUM_CONTENT_START");
-export const ENUM_CONTENT = Symbol("ENUM_CONTENT");
+export const ENUM_BODY_START = Symbol("ENUM_BODY_START");
+export const ENUM_BODY = Symbol("ENUM_BODY");
+export const ENUM_BODY_END = Symbol("ENUM_BODY_END");
 export const ENUM_ITEM_NAME = Symbol("ENUM_ITEM_NAME");
 export const ENUM_ITEM_NAME_END = Symbol("ENUM_ITEM_NAME_END");
 export const ENUM_ITEM_VALUE = Symbol("ENUM_ITEM_VALUE");
+export const ENUM_ITEM_INTEGER_VALUE = Symbol("ENUM_ITEM_INTEGER_VALUE");
+export const ENUM_ITEM_STRING_VALUE_START = Symbol(
+  "ENUM_ITEM_STRING_VALUE_START",
+);
+export const ENUM_ITEM_STRING_VALUE = Symbol("ENUM_ITEM_STRING_VALUE");
+export const ENUM_ITEM_STRING_VALUE_END = Symbol("ENUM_ITEM_STRING_VALUE_END");
+export const ENUM_ITEM_VALUE_END = Symbol("ENUM_ITEM_VALUE_END");
 export const $ = Symbol("$");
 
-const separatorRegex = /^[\s\t\[\]\(\),:{}\?]$/;
+const separatorRegex = /^[\s\t\[\]\(\),:{}\?\"]$/;
 const newlineRegex = /^\r?\n$/;
 const whitespaceRegex = /^[\s\t]$/;
 // const blankRegex = /^[ \t]$/;
 const typeNameRegex = /^\w+$/;
 const propNameRegex = /^\w+$/;
 const propTypeNameRegex = /^\w+$/;
+const propTypeRefRegex = /^\w+$/;
 const propTypeLengthRegex = /^\d+$/;
 const enumNameRegex = /^\w+$/;
 const enumItemNameRegex = /^\w+$/;
-const integerRegex = /^\d+$/;
+const enumItemIntegerValueRegex = /^\d+$/;
+const enumItemStringValueRegex = /^[^"]+$/;
+
+function tryIgnoreWhiteSpace(token: string, sym: symbol) {
+  if (whitespaceRegex.test(token)) {
+    return [token, sym];
+  } else {
+    return false;
+  }
+}
+
 const ontypeParser = createLLParser<State>(
   {
-    [START]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, START];
-      }
-
-
-      if (token === "type") {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "type",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, TYPE_NAME];
-      }
-
-      if (token === "enum") {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "enum",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, ENUM_NAME];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected token: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        START,
-      ];
+    [S]() {
+      return [MODEL];
     },
     [MODEL]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, MODEL];
-      }
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, MODEL);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
       if (token === "type") {
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
-            type: "type",
+            type: "type-keyword",
             length: token.length,
             line,
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, TYPE_NAME];
+
+        return [token, TYPE_KEYWORD];
       }
 
       if (token === "enum") {
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
-            type: "enum",
+            type: "enum-keyword",
             length: token.length,
             line,
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, ENUM_NAME];
+
+        return [token, ENUM_KEYWORD];
       }
 
       return [
@@ -189,19 +169,11 @@ const ontypeParser = createLLParser<State>(
         MODEL,
       ];
     },
-    [TYPE_NAME]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, TYPE_NAME];
-      }
+    [TYPE_KEYWORD]([token], { index, line, inlineIndex }, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, TYPE_KEYWORD);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
       if (typeNameRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.types.push({
-            name: token,
-            props: [],
-            decorators: [],
-          });
-        }
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
             type: "type-name",
@@ -211,32 +183,7 @@ const ontypeParser = createLLParser<State>(
           });
         }
 
-        return [token, TYPE_CONTENT_START];
-      }
-
-      return [
-        parseError({
-          message: `Invalid type name: '${token}'.`,
-          token: token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        TYPE_CONTENT_START,
-      ];
-    },
-    [TYPE_CONTENT_START]([token], { index, line, inlineIndex }) {
-      if (whitespaceRegex.test(token)) {
-        return [token, TYPE_CONTENT_START];
-      }
-
-      if (token === "{") {
-        return [token, TYPE_CONTENT];
-      }
-
-      if (token.startsWith("@")) {
-        return [TYPE_DECORATOR];
+        return [token, TYPE_NAME];
       }
 
       return [
@@ -251,17 +198,12 @@ const ontypeParser = createLLParser<State>(
         MODEL,
       ];
     },
-    [TYPE_CONTENT]([token], { index, line, inlineIndex }) {
-      if (whitespaceRegex.test(token)) {
-        return [token, TYPE_CONTENT];
-      }
+    [TYPE_NAME]([token], { index, line, inlineIndex }) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, TYPE_NAME);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
-      if (propNameRegex.test(token)) {
-        return [PROP_NAME];
-      }
-
-      if (token === "}") {
-        return [token, MODEL];
+      if (token === "{") {
+        return [token, TYPE_BODY_START];
       }
 
       return [
@@ -273,54 +215,17 @@ const ontypeParser = createLLParser<State>(
           inlineIndex: inlineIndex - token.length,
         }),
         token,
-        TYPE_CONTENT,
+        MODEL,
       ];
     },
-    [TYPE_DECORATOR]([token], { index, line, inlineIndex }, state) {
-      if (/^@\w+$/.test(token)) {
-        if (state.enableAst) {
-          state.ast.types[state.ast.types.length - 1].decorators.push({
-            name: token.slice(1),
-            args: [],
-          });
-        }
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "type-decorator",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, TYPE_CONTENT_START];
-      }
-
-      return [
-        parseError({
-          message: `Invalid type decorator name: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        TYPE_CONTENT,
-      ];
+    [TYPE_BODY_START]() {
+      return [TYPE_BODY];
     },
-    [PROP_NAME]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_NAME];
-      }
+    [TYPE_BODY]([token], { index, line, inlineIndex }, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, TYPE_BODY);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
       if (propNameRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.types[state.ast.types.length - 1].props.push({
-            name: token,
-            type: undefined as unknown as PropType,
-            decorators: [],
-            optional: false,
-          });
-        }
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
             type: "prop-name",
@@ -329,91 +234,81 @@ const ontypeParser = createLLParser<State>(
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, PROP_NAME_END];
+
+        return [token, PROP_NAME];
+      }
+
+      if (token === "}") {
+        return [token, TYPE_BODY_END];
       }
 
       return [
         parseError({
-          message: `Invalid property name: '${token}'.`,
+          message: `Unexpected token: '${token}'.`,
           token,
           index: index - token.length,
           line,
           inlineIndex: inlineIndex - token.length,
         }),
         token,
-        PROP_NAME,
+        TYPE_BODY,
+      ];
+    },
+    [TYPE_BODY_END]() {
+      return [MODEL];
+    },
+    [PROP_NAME]([token], { index, line, inlineIndex }) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, PROP_NAME);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      if (token === "?") {
+        return [token, PROP_NAME_OPTIONAL_MODIFIER];
+      }
+
+      if (token === ":") {
+        return [token, PROP_NAME_END];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        TYPE_BODY,
+      ];
+    },
+    [PROP_NAME_OPTIONAL_MODIFIER]([token], { index, line, inlineIndex }) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(
+        token,
+        PROP_NAME_OPTIONAL_MODIFIER,
+      );
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      if (token === ":") {
+        return [token, PROP_NAME_END];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        TYPE_BODY,
       ];
     },
     [PROP_NAME_END]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_NAME_END];
-      }
-
-      if (token.startsWith("?")) {
-        if (state.enableAst) {
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].optional = true;
-        }
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "prop-optional",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, OPTIONAL_PROP_NAME_END];
-      }
-
-      if (token.startsWith(":")) {
-        return [token, PROP_TYPE];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected token: '${token}'.`,
-          token,
-          index,
-          line,
-          inlineIndex,
-        }),
-        token,
-        PROP_NAME_END,
-      ];
-    },
-    [OPTIONAL_PROP_NAME_END]([token], { index, line, inlineIndex }) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_NAME_END];
-      }
-
-      if (token.startsWith(":")) {
-        return [token, PROP_TYPE];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected token: '${token}'.`,
-          token,
-          index,
-          line,
-          inlineIndex,
-        }),
-        token,
-        PROP_NAME_END,
-      ];
-    },
-    [PROP_TYPE]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE];
-      }
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, PROP_NAME_END);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
       if (propTypeNameRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].type = { name: token };
-        }
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
             type: "prop-type-name",
@@ -422,160 +317,41 @@ const ontypeParser = createLLParser<State>(
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, PROP_TYPE_NAME_END];
+
+        return [token, PROP_TYPE_NAME];
       }
 
       return [
         parseError({
-          message: `Invalid property type: '${token}'.`,
+          message: `Unexpected token: '${token}'.`,
           token,
           index: index - token.length,
           line,
           inlineIndex: inlineIndex - token.length,
         }),
         token,
-        PROP_TYPE,
+        TYPE_BODY,
       ];
     },
-    [PROP_TYPE_NAME_END]([token], _position) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_NAME_END];
-      }
+    [PROP_TYPE_NAME]([token]) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, PROP_TYPE_NAME);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
       if (token === "[") {
-        return [token, PROP_TYPE_REF];
+        return [token, PROP_TYPE_REF_START];
       }
 
       if (token === "(") {
-        return [token, PROP_TYPE_LENGTH];
+        return [token, PROP_TYPE_LENGTH_START];
       }
 
-      return [PROP_DECORATOR];
+      return [PROP_TYPE_END];
     },
-    [PROP_TYPE_REF]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_REF];
-      }
-
-      if (propNameRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].type.ref = token;
-        }
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "prop-ref",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, PROP_TYPE_REF_END];
-      }
-
-      return [
-        parseError({
-          message: `Invalid property reference: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        PROP_DECORATOR,
-      ];
-    },
-    [PROP_TYPE_REF_END]([token], { index, line, inlineIndex }) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_REF_END];
-      }
-
-      if (token === "]") {
-        return [token, TYPE_CONTENT];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected end of property reference: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        PROP_DECORATOR,
-      ];
-    },
-    [PROP_TYPE_LENGTH]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_LENGTH];
-      }
-
-      if (propTypeLengthRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].type.length = Number(token);
-        }
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "prop-length",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, PROP_TYPE_LENGTH_END];
-      }
-
-      return [
-        parseError({
-          message: `Invalid property length: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        PROP_DECORATOR,
-      ];
-    },
-    [PROP_TYPE_LENGTH_END]([token], { index, line, inlineIndex }) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_TYPE_LENGTH_END];
-      }
-
-      if (token === ")") {
-        return [token, TYPE_CONTENT];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected end of property length: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        PROP_DECORATOR,
-      ];
-    },
-    [PROP_DECORATOR]([token], { line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, PROP_DECORATOR];
-      }
+    [PROP_TYPE_END]([token], { line, inlineIndex }, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, PROP_TYPE_END);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
       if (token.startsWith("@")) {
-        if (state.enableAst) {
-          state.ast.types[state.ast.types.length - 1].props[
-            state.ast.types[state.ast.types.length - 1].props.length - 1
-          ].decorators.push({
-            name: token.slice(1),
-            args: [],
-          });
-        }
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
             type: "prop-decorator",
@@ -584,23 +360,127 @@ const ontypeParser = createLLParser<State>(
             inlineIndex: inlineIndex - token.length,
           });
         }
+
         return [token, PROP_DECORATOR];
       }
 
-      return [TYPE_CONTENT];
+      return [TYPE_BODY];
     },
-    [ENUM_NAME]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, ENUM_NAME];
-      }
+    [PROP_TYPE_REF_START]([token], { index, line, inlineIndex }, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, PROP_TYPE_REF_START);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
-      if (enumNameRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.enums.push({
-            name: token,
-            items: [],
+      if (propTypeRefRegex.test(token)) {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "prop-type-ref",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
           });
         }
+
+        return [token, PROP_TYPE_REF];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        TYPE_BODY,
+      ];
+    },
+    [PROP_TYPE_REF]([token], { index, line, inlineIndex }) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, PROP_TYPE_REF);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      if (token === "]") {
+        return [token, PROP_TYPE_REF_END];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        TYPE_BODY,
+      ];
+    },
+    [PROP_TYPE_REF_END]() {
+      return [PROP_TYPE_END];
+    },
+    [PROP_TYPE_LENGTH_START]([token], { index, line, inlineIndex }, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(
+        token,
+        PROP_TYPE_LENGTH_START,
+      );
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      if (propTypeLengthRegex.test(token)) {
+        if (state.enableSemanticTokens) {
+          state.semanticTokens.push({
+            type: "prop-type-length",
+            length: token.length,
+            line,
+            inlineIndex: inlineIndex - token.length,
+          });
+        }
+
+        return [token, PROP_TYPE_LENGTH];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        TYPE_BODY,
+      ];
+    },
+    [PROP_TYPE_LENGTH]([token], { index, line, inlineIndex }) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, PROP_TYPE_LENGTH);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      if (token === ")") {
+        return [token, PROP_TYPE_LENGTH_END];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        TYPE_BODY,
+      ];
+    },
+    [PROP_TYPE_LENGTH_END]() {
+      return [PROP_TYPE_END];
+    },
+    [PROP_DECORATOR]() {
+      return [TYPE_BODY];
+    },
+    [ENUM_KEYWORD]([token], { index, line, inlineIndex }, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_KEYWORD);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      if (enumNameRegex.test(token)) {
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
             type: "enum-name",
@@ -610,33 +490,12 @@ const ontypeParser = createLLParser<State>(
           });
         }
 
-        return [token, ENUM_CONTENT_START];
+        return [token, ENUM_NAME];
       }
 
       return [
         parseError({
-          message: `Invalid enum name: '${token}'.`,
-          token: token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        ENUM_CONTENT_START,
-      ];
-    },
-    [ENUM_CONTENT_START]([token], { index, line, inlineIndex }) {
-      if (whitespaceRegex.test(token)) {
-        return [token, ENUM_CONTENT_START];
-      }
-
-      if (token === "{") {
-        return [token, ENUM_CONTENT];
-      }
-
-      return [
-        parseError({
-          message: `Expected '{' after enum name.`,
+          message: `Unexpected token: '${token}'.`,
           token,
           index: index - token.length,
           line,
@@ -646,17 +505,12 @@ const ontypeParser = createLLParser<State>(
         MODEL,
       ];
     },
-    [ENUM_CONTENT]([token], { index, line, inlineIndex }) {
-      if (whitespaceRegex.test(token)) {
-        return [token, ENUM_CONTENT];
-      }
+    [ENUM_NAME]([token], { index, line, inlineIndex }) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_NAME);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
-      if (enumItemNameRegex.test(token)) {
-        return [ENUM_ITEM_NAME];
-      }
-
-      if (token === "}") {
-        return [token, MODEL];
+      if (token === "{") {
+        return [token, ENUM_BODY_START];
       }
 
       return [
@@ -668,21 +522,17 @@ const ontypeParser = createLLParser<State>(
           inlineIndex: inlineIndex - token.length,
         }),
         token,
-        ENUM_CONTENT,
+        MODEL,
       ];
     },
-    [ENUM_ITEM_NAME]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, ENUM_ITEM_NAME];
-      }
+    [ENUM_BODY_START]() {
+      return [ENUM_BODY];
+    },
+    [ENUM_BODY]([token], { index, line, inlineIndex }, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_BODY);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
       if (enumItemNameRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.enums[state.ast.enums.length - 1].items.push({
-            name: token,
-            value: undefined as unknown as EnumValue,
-          });
-        }
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
             type: "enum-item-name",
@@ -691,53 +541,54 @@ const ontypeParser = createLLParser<State>(
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, ENUM_ITEM_NAME_END];
+
+        return [token, ENUM_ITEM_NAME];
       }
 
-      return [
-        parseError({
-          message: `Invalid enum item name: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        ENUM_ITEM_NAME,
-      ];
-    },
-    [ENUM_ITEM_NAME_END]([token], { index, line, inlineIndex }) {
-      if (whitespaceRegex.test(token)) {
-        return [token, ENUM_ITEM_NAME_END];
-      }
-
-      if (token.startsWith(":")) {
-        return [token, ENUM_ITEM_VALUE];
+      if (token === "}") {
+        return [token, ENUM_BODY_END];
       }
 
       return [
         parseError({
           message: `Unexpected token: '${token}'.`,
           token,
-          index,
+          index: index - token.length,
           line,
-          inlineIndex,
+          inlineIndex: inlineIndex - token.length,
         }),
         token,
-        ENUM_ITEM_NAME_END,
+        ENUM_BODY,
       ];
     },
-    [ENUM_ITEM_VALUE]([token], { index, line, inlineIndex }, state) {
-      if (whitespaceRegex.test(token)) {
-        return [token, ENUM_ITEM_VALUE];
+    [ENUM_BODY_END]() {
+      return [MODEL];
+    },
+    [ENUM_ITEM_NAME]([token], { index, line, inlineIndex }) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_NAME);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      if (token === ":") {
+        return [token, ENUM_ITEM_NAME_END];
       }
 
-      if (integerRegex.test(token)) {
-        if (state.enableAst) {
-          state.ast.enums[state.ast.enums.length - 1].items[
-            state.ast.enums[state.ast.enums.length - 1].items.length - 1
-          ].value = Number(token);
-        }
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        ENUM_BODY,
+      ];
+    },
+    [ENUM_ITEM_NAME_END]([token], { index, line, inlineIndex }, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_NAME_END);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      if (enumItemIntegerValueRegex.test(token)) {
         if (state.enableSemanticTokens) {
           state.semanticTokens.push({
             type: "enum-item-integer-value",
@@ -746,39 +597,133 @@ const ontypeParser = createLLParser<State>(
             inlineIndex: inlineIndex - token.length,
           });
         }
-        return [token, ENUM_CONTENT];
+
+        return [token, ENUM_ITEM_INTEGER_VALUE];
       }
 
-      if (token.startsWith('"') && token.endsWith('"')) {
-        if (state.enableAst) {
-          state.ast.enums[state.ast.enums.length - 1].items[
-            state.ast.enums[state.ast.enums.length - 1].items.length - 1
-          ].value = token.slice(1, -1);
-        }
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "enum-item-string-value",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-        return [token, ENUM_CONTENT];
+      if (token === '"') {
+        return [token, ENUM_ITEM_STRING_VALUE_START];
       }
 
       return [
         parseError({
-          message: `Invalid enum value: '${token}'.`,
+          message: `Unexpected token: '${token}'.`,
           token,
           index: index - token.length,
           line,
           inlineIndex: inlineIndex - token.length,
         }),
         token,
-        ENUM_CONTENT,
+        ENUM_BODY,
       ];
     },
-    [$]([token], { index, line, inlineIndex }, _) {
+    [ENUM_ITEM_INTEGER_VALUE]([token]) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(
+        token,
+        ENUM_ITEM_INTEGER_VALUE,
+      );
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      return [ENUM_ITEM_VALUE_END];
+    },
+    [ENUM_ITEM_STRING_VALUE_START](
+      [token],
+      { index, line, inlineIndex },
+      state,
+    ) {
+      state.stringBuffer = "";
+      state.stringBufferStartInlineIndex = inlineIndex - token.length - 1;
+      if (enumItemStringValueRegex.test(token)) {
+        return [ENUM_ITEM_STRING_VALUE];
+      }
+
+      if (token === '"') {
+        return [token, ENUM_ITEM_STRING_VALUE_END];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        ENUM_BODY,
+      ];
+    },
+    [ENUM_ITEM_STRING_VALUE]([token], { index, line, inlineIndex }, state) {
+      if (enumItemStringValueRegex.test(token)) {
+        state.stringBuffer += token;
+
+        return [token, ENUM_ITEM_STRING_VALUE];
+      }
+
+      if (token === '"') {
+        if (
+          state.enableSemanticTokens &&
+          state.stringBuffer !== "" &&
+          state.stringBufferStartInlineIndex !== null
+        ) {
+          const lines = state.stringBuffer.split(/\r?\n/);
+          if (lines.length === 1) {
+            state.semanticTokens.push({
+              type: "enum-item-string-value",
+              length: state.stringBuffer.length + 2,
+              line,
+              inlineIndex: inlineIndex - state.stringBuffer.length - 2,
+            });
+          } else {
+            const stringBufferStartInlineIndex =
+              state.stringBufferStartInlineIndex;
+
+            lines.forEach((row, i) => {
+              const lineIndex = line - (lines.length - 1) + i;
+              const isLast = i === lines.length - 1;
+              const length = row.length + (i === 0 || isLast ? 1 : 0);
+
+              state.semanticTokens.push({
+                type: "enum-item-string-value",
+                length,
+                line: lineIndex,
+                inlineIndex: i === 0 ? stringBufferStartInlineIndex : 0,
+              });
+            });
+          }
+        }
+
+        return [token, ENUM_ITEM_STRING_VALUE_END];
+      }
+
+      return [
+        parseError({
+          message: `Unexpected token: '${token}'.`,
+          token,
+          index: index - token.length,
+          line,
+          inlineIndex: inlineIndex - token.length,
+        }),
+        token,
+        ENUM_BODY,
+      ];
+    },
+    [ENUM_ITEM_STRING_VALUE_END]([token], _, state) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_VALUE_END);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      state.stringBuffer = "";
+      state.stringBufferStartInlineIndex = null;
+
+      return [ENUM_ITEM_VALUE_END];
+    },
+    [ENUM_ITEM_VALUE_END]([token]) {
+      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_VALUE_END);
+      if (ignoreWhiteSpace) return ignoreWhiteSpace;
+
+      return [ENUM_BODY];
+    },
+    [$]([token], { index, line, inlineIndex }) {
       return [
         token,
         parseError({
@@ -791,7 +736,7 @@ const ontypeParser = createLLParser<State>(
       ];
     },
   },
-  () => [START, $]
+  () => [S, $],
 );
 
 export type InputStream =
@@ -803,7 +748,7 @@ export type InputStream =
 export async function parse(
   stream: InputStream,
   initialState: State,
-  options?: ParseOptions
+  options?: ParseOptions,
 ) {
   return ontypeParser.parse(lexer(stream), initialState, options);
 }
