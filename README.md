@@ -5,10 +5,7 @@ Ontype is a simple schema language similar to TypeScript.
 Below is a valid Ontype schema, highlighted using TypeScript syntax:
 
 ```ts
-import "ontype/primitive.ontype"
-
 type User {
-    @hogehoge
     id: char
     password: string @hidden
     passwordSalt: string @hidden
@@ -28,9 +25,7 @@ enum TodoStatus {
 }
 ```
 
-- `import "ontype/primitive.ontype"` imports another Ontype file.
 - `type User {}` defines a `User` type.
-- `@hogehoge` is a type decorator for `User`.
 - `id: char` declares that the `id` property is of type `char`.
 - `password: string @hidden` defines a property with a decorator `@hidden`.
 - `deadline?: datetime @nullable` declares an optional property `deadline`.
@@ -52,16 +47,10 @@ import { parse } from "ontype";
 const readStream = fs.createReadStream('./example.ontype', "utf-8");
 
 const { errors, result } = await parse(readStream, {
-  enableAst: true,
-  ast: {
-    types: [],
-    enums: [],
-  },
   enableSemanticTokens: true,
   semanticTokens: [],
 });
 
-console.log(result.ast);
 console.log(result.semanticTokens);
 console.log(errors);
 ```
