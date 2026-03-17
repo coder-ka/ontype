@@ -16,12 +16,13 @@ type Todo {
     title: string(10)
     deadline?: datetime @nullable
     authorId: User[id]
+    status: TodoStatus
 }
 
 enum TodoStatus {
-    READY: 0
-    IN_PROGRESS: 1
-    DONE: "done"
+    READY
+    IN_PROGRESS
+    DONE
 }
 ```
 
@@ -31,7 +32,7 @@ enum TodoStatus {
 - `deadline?: datetime @nullable` declares an optional property `deadline`.
 - `authorId: User[id]` indicates that `authorId` references the `id` property of `User`.
 - `enum TodoStatus` defines an enum named `TodoStatus`.
-- `READY: 0` assigns the value `0` to the `READY` enum member.
+- `READY` is a member of the enum.
 
 ## Parser
 
