@@ -53,11 +53,12 @@ test("ontype semantic tokens test", async () => {
     { type: "prop-name", length: 8, line: 22, inlineIndex: 4 },
     { type: "prop-type-name", length: 4, line: 22, inlineIndex: 14 },
     { type: "prop-type-ref", length: 2, line: 22, inlineIndex: 19 },
-    { type: "enum-keyword", length: 4, line: 25, inlineIndex: 0 },
-    { type: "enum-name", length: 10, line: 25, inlineIndex: 5 },
-    { type: "enum-item-name", length: 5, line: 26, inlineIndex: 4 },
-    { type: "enum-item-name", length: 11, line: 27, inlineIndex: 4 },
-    { type: "enum-item-name", length: 4, line: 28, inlineIndex: 4 },
-    { type: "enum-item-name", length: 6, line: 29, inlineIndex: 4 },
+    { type: "prop-name", length: 6, line: 23, inlineIndex: 4 },
+    { type: "prop-type-name", length: 10, line: 23, inlineIndex: 12 },
+    { type: "enum-keyword", length: 4, line: 26, inlineIndex: 0 },
+    { type: "enum-name", length: 10, line: 26, inlineIndex: 5 },
+    { type: "enum-item-name", length: 5, line: 27, inlineIndex: 4 },
+    { type: "enum-item-name", length: 11, line: 28, inlineIndex: 4 },
+    { type: "enum-item-name", length: 4, line: 29, inlineIndex: 4 },
   ]);
 });

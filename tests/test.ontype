@@ -21,11 +21,11 @@ type Todo {
     title: string(10)
     deadline?: datetime @nullable
     authorId: User[id]
+    status: TodoStatus
 }
 
 enum TodoStatus {
     READY
     IN_PROGRESS
     DONE
-    CUSTOM
 }
