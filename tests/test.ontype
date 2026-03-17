@@ -24,14 +24,8 @@ type Todo {
 }
 
 enum TodoStatus {
-    READY: 0
-    IN_PROGRESS: 1
-    DONE: "done"
-    CUSTOM: "This is multi-line enum value test
-
-1. first
-2. second
-3. third
-
-OK"
+    READY
+    IN_PROGRESS
+    DONE
+    CUSTOM
 }

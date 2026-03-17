@@ -51,9 +51,7 @@ export type State = {
       | "prop-optional"
       | "enum-keyword"
       | "enum-name"
-      | "enum-item-name"
-      | "enum-item-integer-value"
-      | "enum-item-string-value";
+      | "enum-item-name";
     length: number;
     line: number;
     inlineIndex: number;
@@ -87,15 +85,6 @@ export const ENUM_BODY_START = Symbol("ENUM_BODY_START");
 export const ENUM_BODY = Symbol("ENUM_BODY");
 export const ENUM_BODY_END = Symbol("ENUM_BODY_END");
 export const ENUM_ITEM_NAME = Symbol("ENUM_ITEM_NAME");
-export const ENUM_ITEM_NAME_END = Symbol("ENUM_ITEM_NAME_END");
-export const ENUM_ITEM_VALUE = Symbol("ENUM_ITEM_VALUE");
-export const ENUM_ITEM_INTEGER_VALUE = Symbol("ENUM_ITEM_INTEGER_VALUE");
-export const ENUM_ITEM_STRING_VALUE_START = Symbol(
-  "ENUM_ITEM_STRING_VALUE_START",
-);
-export const ENUM_ITEM_STRING_VALUE = Symbol("ENUM_ITEM_STRING_VALUE");
-export const ENUM_ITEM_STRING_VALUE_END = Symbol("ENUM_ITEM_STRING_VALUE_END");
-export const ENUM_ITEM_VALUE_END = Symbol("ENUM_ITEM_VALUE_END");
 export const $ = Symbol("$");
 
 const separatorRegex = /^[\s\t\[\]\(\),:{}\?\"]$/;
@@ -109,8 +98,6 @@ const propTypeRefRegex = /^\w+$/;
 const propTypeLengthRegex = /^\d+$/;
 const enumNameRegex = /^\w+$/;
 const enumItemNameRegex = /^\w+$/;
-const enumItemIntegerValueRegex = /^\d+$/;
-const enumItemStringValueRegex = /^[^"]+$/;
 
 function tryIgnoreWhiteSpace(token: string, sym: symbol) {
   if (whitespaceRegex.test(token)) {
@@ -562,158 +549,8 @@ const ontypeParser = createLLParser<State>(
     [ENUM_BODY_END]() {
       return [MODEL];
     },
-    [ENUM_ITEM_NAME]([token], { index, line, inlineIndex }) {
+    [ENUM_ITEM_NAME]([token]) {
       const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_NAME);
-      if (ignoreWhiteSpace) return ignoreWhiteSpace;
-
-      if (token === ":") {
-        return [token, ENUM_ITEM_NAME_END];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected token: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        ENUM_BODY,
-      ];
-    },
-    [ENUM_ITEM_NAME_END]([token], { index, line, inlineIndex }, state) {
-      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_NAME_END);
-      if (ignoreWhiteSpace) return ignoreWhiteSpace;
-
-      if (enumItemIntegerValueRegex.test(token)) {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "enum-item-integer-value",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-
-        return [token, ENUM_ITEM_INTEGER_VALUE];
-      }
-
-      if (token === '"') {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "enum-item-string-value",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-
-        return [token, ENUM_ITEM_STRING_VALUE_START];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected token: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        ENUM_BODY,
-      ];
-    },
-    [ENUM_ITEM_INTEGER_VALUE]([token]) {
-      const ignoreWhiteSpace = tryIgnoreWhiteSpace(
-        token,
-        ENUM_ITEM_INTEGER_VALUE,
-      );
-      if (ignoreWhiteSpace) return ignoreWhiteSpace;
-
-      return [ENUM_ITEM_VALUE_END];
-    },
-    [ENUM_ITEM_STRING_VALUE_START](
-      [token],
-      { index, line, inlineIndex },
-      state,
-    ) {
-      if (enumItemStringValueRegex.test(token)) {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "enum-item-string-value",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-
-        return [token, ENUM_ITEM_STRING_VALUE];
-      }
-
-      if (token === '"') {
-        return [token, ENUM_ITEM_STRING_VALUE_END];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected token: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        ENUM_BODY,
-      ];
-    },
-    [ENUM_ITEM_STRING_VALUE]([token], { index, line, inlineIndex }, state) {
-      if (enumItemStringValueRegex.test(token)) {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "enum-item-string-value",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-
-        return [token, ENUM_ITEM_STRING_VALUE];
-      }
-
-      if (token === '"') {
-        if (state.enableSemanticTokens) {
-          state.semanticTokens.push({
-            type: "enum-item-string-value",
-            length: token.length,
-            line,
-            inlineIndex: inlineIndex - token.length,
-          });
-        }
-
-        return [token, ENUM_ITEM_STRING_VALUE_END];
-      }
-
-      return [
-        parseError({
-          message: `Unexpected token: '${token}'.`,
-          token,
-          index: index - token.length,
-          line,
-          inlineIndex: inlineIndex - token.length,
-        }),
-        token,
-        ENUM_BODY,
-      ];
-    },
-    [ENUM_ITEM_STRING_VALUE_END]([token]) {
-      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_VALUE_END);
-      if (ignoreWhiteSpace) return ignoreWhiteSpace;
-
-      return [ENUM_ITEM_VALUE_END];
-    },
-    [ENUM_ITEM_VALUE_END]([token]) {
-      const ignoreWhiteSpace = tryIgnoreWhiteSpace(token, ENUM_ITEM_VALUE_END);
       if (ignoreWhiteSpace) return ignoreWhiteSpace;
 
       return [ENUM_BODY];
